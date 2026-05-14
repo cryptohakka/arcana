@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Arcana — Adaptive Portfolio Manager</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+:root{
+  --bg:#0a1628;
+  --surface:#0f1e35;
+  --surface2:#162440;
+  --surface3:#1d2e4e;
+  --border:#1e3255;
+  --border2:#243d68;
+  --text:#e8edf4;
+  --text2:#8da3bf;
+  --text3:#4a6380;
+  --accent:#4d9fff;
+  --accent-dim:rgba(77,159,255,0.1);
+  --accent-border:rgba(77,159,255,0.25);
+  --ok:#22c55e;
+  --ok-dim:rgba(34,197,94,0.1);
+  --ok-border:rgba(34,197,94,0.25);
+  --danger:#ef4444;
+  --danger-dim:rgba(239,68,68,0.1);
+  --danger-border:rgba(239,68,68,0.25);
+  --warn:#f59e0b;
+  --warn-dim:rgba(245,158,11,0.1);
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Inter',sans-serif;
+}
+html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);overflow:hidden;}
+body::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(77,159,255,0.05) 1px,transparent 1px);background-size:28px 28px;}
+.app{display:grid;grid-template-rows:52px 1fr;grid-template-columns:268px 1fr;height:100vh;position:relative;z-index:1;}
+nav{grid-column:1/-1;display:flex;align-items:center;padding:0 20px;gap:20px;background:var(--surface);border-bottom:1px solid var(--border);}
+.logo{display:flex;align-items:center;gap:9px;text-decoration:none;font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text);letter-spacing:0.03em;}
+.logo-icon{width:26px;height:26px;background:var(--accent);border-radius:5px;display:flex;align-items:center;justify-content:center;font-size:13px;color:#fff;font-weight:600;}
+.nav-div{width:1px;height:18px;background:var(--border2);}
+.nav-sub{font-size:11px;color:var(--text3);}
+.nav-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+.regime-pill{display:flex;align-items:center;gap:6px;padding:4px 11px;border-radius:20px;border:1px solid var(--border2);font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:0.05em;color:var(--text2);transition:all 0.3s;}
+.regime-pill.risk-on{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
+.regime-pill.risk-off{border-color:var(--danger-border);color:var(--danger);background:var(--danger-dim);}
+.rp-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
+.sys-dot{width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 5px var(--ok);animation:blink 3s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1;}50%{opacity:0.3;}}
+.sys-dot.off{background:var(--danger);box-shadow:0 0 5px var(--danger);animation:none;}
+.nav-btn{display:flex;align-items:center;gap:7px;padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;font-family:var(--mono);font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;}
+.nav-btn:hover{border-color:var(--accent-border);color:var(--accent);background:var(--accent-dim);}
+.nav-btn.connected{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
+aside{background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden;}
+.s-sec{padding:14px 14px 0;}
+.s-title{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:0.14em;text-transform:uppercase;color:var(--text3);margin-bottom:8px;display:flex;align-items:center;gap:7px;}
+.s-title::after{content:'';flex:1;height:1px;background:var(--border);}
+.regime-card{background:var(--surface2);border:1px solid var(--border);border-radius:7px;overflow:hidden;margin-bottom:10px;}
+.rc-bar{height:2px;background:var(--border);transition:background 0.4s;}
+.rc-bar.risk-on{background:var(--ok);}
+.rc-bar.risk-off{background:var(--danger);}
+.rc-bar.neutral{background:var(--warn);}
+.rc-body{padding:11px 12px;}
+.rc-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;}
+.rc-lbl{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
+.rc-badge{font-family:var(--mono);font-size:9px;font-weight:500;letter-spacing:0.06em;padding:2px 7px;border-radius:3px;}
+.rc-badge.risk-on{background:var(--ok-dim);color:var(--ok);border:1px solid var(--ok-border);}
+.rc-badge.risk-off{background:var(--danger-dim);color:var(--danger);border:1px solid var(--danger-border);}
+.rc-badge.neutral{background:var(--warn-dim);color:var(--warn);border:1px solid rgba(245,158,11,0.25);}
+.rc-phase{font-size:17px;font-weight:500;color:var(--text);margin-bottom:5px;letter-spacing:-0.01em;}
+.rc-reason{font-size:10px;color:var(--text2);line-height:1.5;max-height:46px;overflow:hidden;}
+.conf-row{display:flex;align-items:center;gap:7px;margin-top:8px;}
+.conf-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.1em;width:56px;}
+.conf-track{flex:1;height:2px;background:var(--border2);border-radius:1px;}
+.conf-fill{height:100%;border-radius:1px;background:var(--accent);transition:width 0.6s ease;}
+.conf-num{font-family:var(--mono);font-size:10px;color:var(--accent);width:26px;text-align:right;}
+.metrics-2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.metric-c{background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 10px;}
+.mc-lbl{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:4px;}
+.mc-val{font-family:var(--mono);font-size:14px;font-weight:500;color:var(--text);}
+.mc-val.ok{color:var(--ok);}
+.mc-val.danger{color:var(--danger);}
+.mc-sub{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;}
+.circle-stack{margin-bottom:10px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:9px 12px;}
+.cs-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.cs-tag{font-family:var(--mono);font-size:9px;padding:2px 7px;border-radius:3px;border:1px solid var(--border2);color:var(--text2);}
+.cs-tag.on{border-color:var(--accent-border);color:var(--accent);background:var(--accent-dim);}
+.action-list{padding:0 14px 10px;display:flex;flex-direction:column;gap:5px;}
+.act{display:flex;align-items:center;gap:9px;padding:9px 11px;background:transparent;border:1px solid var(--border);border-radius:6px;cursor:pointer;text-align:left;transition:all 0.15s;}
+.act:hover{border-color:var(--border2);background:var(--surface2);}
+.act.ok-a{border-color:var(--ok-border);background:var(--ok-dim);}
+.act.ok-a:hover{border-color:var(--ok);}
+.act.danger-a{border-color:var(--danger-border);background:var(--danger-dim);}
+.act.danger-a:hover{border-color:var(--danger);}
+.act-ico{font-size:13px;width:18px;text-align:center;flex-shrink:0;}
+.act-txt{flex:1;}
+.act-name{font-size:12px;font-weight:500;color:var(--text);}
+.act-desc{font-size:10px;color:var(--text2);margin-top:1px;}
+.act.ok-a .act-name{color:var(--ok);}
+.act.danger-a .act-name{color:var(--danger);}
+.s-spacer{flex:1;}
+.s-footer{padding:10px 14px;border-top:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.sf-lbl{font-family:var(--mono);font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;}
+.sf-val{font-family:var(--mono);font-size:10px;color:var(--accent);}
+main{display:flex;flex-direction:column;overflow:hidden;}
+.tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 18px;}
+.tab{padding:14px 14px;font-family:var(--mono);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
+.tab:hover{color:var(--text2);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-r{margin-left:auto;display:flex;align-items:center;}
+.tab-r-txt{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.panel{display:none;flex:1;overflow:hidden;flex-direction:column;}
+.panel.active{display:flex;}
+.ov-scroll{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.ov-scroll::-webkit-scrollbar{width:3px;}
+.ov-scroll::-webkit-scrollbar-thumb{background:var(--border2);}
+.sig-row{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;}
+.sig-c{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:11px 13px;}
+.sig-lbl{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;}
+.sig-val{font-family:var(--mono);font-size:19px;font-weight:500;color:var(--text);letter-spacing:-0.02em;}
+.sig-val.ok{color:var(--ok);}
+.sig-val.danger{color:var(--danger);}
+.sig-val.warn{color:var(--warn);}
+.sig-sub{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:3px;}
+.sig-sub.ok{color:var(--ok);}
+.sig-sub.danger{color:var(--danger);}
+.card-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.ov-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;overflow:hidden;}
+.ov-hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--border);}
+.ov-title{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);}
+.ov-sub{font-family:var(--mono);font-size:9px;color:var(--text3);}
+.ov-body{padding:12px 14px;}
+.ub-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;}
+.ub-row:not(:last-child){border-bottom:1px solid var(--border);}
+.ub-left{display:flex;align-items:center;gap:7px;}
+.ub-dot{width:6px;height:6px;border-radius:50%;}
+.ub-chain{font-family:var(--mono);font-size:10px;color:var(--text2);}
+.ub-badge{font-family:var(--mono);font-size:8px;padding:1px 5px;border-radius:2px;background:var(--accent-dim);color:var(--accent);border:1px solid var(--accent-border);}
+.ub-val{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);}
+.ub-val.ok{color:var(--ok);}
+.ub-usdc{font-size:9px;color:var(--text3);margin-left:2px;}
+.spark{display:flex;align-items:flex-end;gap:2px;height:36px;width:100%;}
+.spark-b{flex:1;border-radius:1px;background:rgba(77,159,255,0.3);min-height:2px;transition:background 0.2s;}
+.spark-b:hover{background:var(--accent);}
+.btx-item{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);}
+.btx-item:last-child{border-bottom:none;}
+.btx-icon{width:22px;height:22px;border-radius:4px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--accent);flex-shrink:0;}
+.btx-info{flex:1;min-width:0;}
+.btx-top{font-family:var(--mono);font-size:10px;color:var(--text);}
+.btx-bot{font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.btx-val{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--ok);}
+.prim-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.prim{background:var(--surface2);border:1px solid var(--border);border-radius:5px;padding:8px 10px;}
+.prim-name{font-family:var(--mono);font-size:9px;font-weight:500;color:var(--accent);margin-bottom:3px;}
+.prim-desc{font-size:10px;color:var(--text2);line-height:1.4;}
+.log-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.log-bar{display:flex;align-items:center;gap:10px;padding:9px 18px;background:var(--surface);border-bottom:1px solid var(--border);}
+.log-dots{display:flex;gap:5px;}
+.ld{width:10px;height:10px;border-radius:50%;}
+.log-title{font-family:var(--mono);font-size:9px;color:var(--text3);letter-spacing:0.07em;text-transform:uppercase;}
+.log-clr{background:none;border:1px solid var(--border);border-radius:3px;padding:3px 9px;font-family:var(--mono);font-size:9px;color:var(--text3);cursor:pointer;margin-left:auto;transition:all 0.15s;}
+.log-clr:hover{border-color:var(--border2);color:var(--text2);}
+#log{flex:1;overflow-y:auto;padding:14px 18px;font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--text2);}
+#log::-webkit-scrollbar{width:3px;}
+#log::-webkit-scrollbar-thumb{background:var(--border2);}
+.ll{display:block;opacity:0;transform:translateX(-3px);animation:li 0.12s ease forwards;}
+@keyframes li{to{opacity:1;transform:none;}}
+.ll.ok{color:var(--ok);}
+.ll.danger{color:var(--danger);}
+.ll.warn{color:var(--warn);}
+.ll.accent{color:var(--accent);}
+.ll.dim{color:var(--text3);font-size:10px;}
+.hist-wrap{flex:1;overflow-y:auto;padding:16px;}
+.hist-wrap::-webkit-scrollbar{width:3px;}
+.hist-wrap::-webkit-scrollbar-thumb{background:var(--border2);}
+.tx-card{display:flex;align-items:center;gap:12px;padding:11px 14px;background:var(--surface);border:1px solid var(--border);border-radius:7px;margin-bottom:7px;transition:border-color 0.15s;}
+.tx-card:hover{border-color:var(--border2);}
+.tx-ico{width:34px;height:34px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;}
+.tx-ico.bridge{background:var(--accent-dim);border:1px solid var(--accent-border);}
+.tx-ico.on{background:var(--ok-dim);border:1px solid var(--ok-border);}
+.tx-ico.off{background:var(--danger-dim);border:1px solid var(--danger-border);}
+.tx-body{flex:1;min-width:0;}
+.tx-type{font-size:12px;font-weight:500;color:var(--text);}
+.tx-meta{font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:2px;}
+.tx-right{text-align:right;flex-shrink:0;}
+.tx-amt{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);}
+.tx-time{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:2px;}
+.tx-hash{font-family:var(--mono);font-size:9px;color:var(--accent);cursor:pointer;margin-top:2px;}
+.tx-hash:hover{text-decoration:underline;}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:8px;}
+.empty-icon{font-size:24px;opacity:0.2;}
+.empty-txt{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(5,12,24,0.8);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
+.modal-bg.open{display:flex;}
+.modal{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:22px;width:360px;}
+.modal-title{font-size:13px;font-weight:600;color:var(--text);margin-bottom:8px;}
+.modal-desc{font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:18px;}
+.modal-row{display:flex;gap:7px;}
+.mb{flex:1;padding:9px;border-radius:5px;border:1px solid var(--border2);background:transparent;font-family:var(--mono);font-size:10px;color:var(--text2);cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;}
+.mb:hover{border-color:var(--border);color:var(--text);}
+.mb.ok-mb{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
+.mb.ok-mb:hover{border-color:var(--ok);}
+.mb.danger-mb{border-color:var(--danger-border);color:var(--danger);background:var(--danger-dim);}
+.mb.danger-mb:hover{border-color:var(--danger);}
+.toast{position:fixed;bottom:18px;right:18px;z-index:200;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--text);display:flex;align-items:center;gap:8px;transform:translateY(50px);opacity:0;transition:all 0.2s ease;max-width:300px;}
+.toast.show{transform:translateY(0);opacity:1;}
+.toast.ok{border-left:2px solid var(--ok);}
+.toast.danger{border-left:2px solid var(--danger);}
+.toast.warn{border-left:2px solid var(--warn);}
+.spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp 0.6s linear infinite;vertical-align:middle;margin-right:5px;}
+@keyframes sp{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<nav>
+  <a class="logo" href="#"><div class="logo-icon">A</div>ARCANA</a>
+  <div class="nav-div"></div>
+  <span class="nav-sub">Adaptive Portfolio Manager · Arc Testnet</span>
+  <div class="nav-right">
+    <div class="regime-pill neutral" id="navRegime"><div class="rp-dot"></div><span id="navTxt">DETECTING</span></div>
+    <div class="sys-dot" id="sysDot"></div>
+    <button class="nav-btn" id="connectBtn" onclick="connectWallet()"><span id="connectLabel">Connect Wallet</span></button>
+  </div>
+</nav>
+
+<aside>
+  <div class="s-sec">
+    <div class="s-title">Market Regime</div>
+    <div class="regime-card">
+      <div class="rc-bar neutral" id="rcBar"></div>
+      <div class="rc-body">
+        <div class="rc-row">
+          <span class="rc-lbl">Phase</span>
+          <span class="rc-badge neutral" id="rcBadge">—</span>
+        </div>
+        <div class="rc-phase" id="rcPhase">—</div>
+        <div class="rc-reason" id="rcReason">Awaiting analysis...</div>
+        <div class="conf-row">
+          <span class="conf-lbl">Confidence</span>
+          <div class="conf-track"><div class="conf-fill" id="confFill" style="width:0%"></div></div>
+          <span class="conf-num" id="confNum">—</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sec">
+    <div class="s-title">Metrics</div>
+    <div class="metrics-2">
+      <div class="metric-c"><div class="mc-lbl">BTC</div><div class="mc-val" id="mBtc">—</div><div class="mc-sub">live price</div></div>
+      <div class="metric-c"><div class="mc-lbl">Signal</div><div class="mc-val" id="mSig">—</div><div class="mc-sub">−3 to +3</div></div>
+      <div class="metric-c"><div class="mc-lbl">Arc USDC</div><div class="mc-val ok" id="mArc">—</div><div class="mc-sub">Arc Testnet</div></div>
+      <div class="metric-c"><div class="mc-lbl">Gateway</div><div class="mc-val" id="mGw">—</div><div class="mc-sub">Base Sepolia</div></div>
+    </div>
+  </div>
+
+  <div class="s-sec">
+    <div class="s-title">Circle Stack</div>
+    <div class="circle-stack">
+      <div class="cs-tags">
+        <span class="cs-tag on">Gateway</span>
+        <span class="cs-tag on">Unified Balance</span>
+        <span class="cs-tag on">USDC</span>
+        <span class="cs-tag on">USYC</span>
+        <span class="cs-tag">CCTP</span>
+        <span class="cs-tag">Paymaster</span>
+        <span class="cs-tag">App Kit</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="s-sec">
+    <div class="s-title">Actions</div>
+  </div>
+  <div class="action-list">
+    <button class="act ok-a" onclick="trigger('risk-on')">
+      <span class="act-ico">↑</span>
+      <span class="act-txt"><div class="act-name">Risk-On Rebalance</div><div class="act-desc">Deploy to highest-yield vault via LI.FI</div></span>
+    </button>
+    <button class="act danger-a" onclick="trigger('risk-off')">
+      <span class="act-ico">⬇</span>
+      <span class="act-txt"><div class="act-name">Risk-Off → Arc Bridge</div><div class="act-desc">Park USDC on Arc · Circle Gateway</div></span>
+    </button>
+    <button class="act" onclick="trigger('regime-check')">
+      <span class="act-ico">◎</span>
+      <span class="act-txt"><div class="act-name">Detect Regime</div><div class="act-desc">3-agent BTC + FR + OI analysis</div></span>
+    </button>
+  </div>
+
+  <div class="s-spacer"></div>
+  <div class="s-footer">
+    <span class="sf-lbl">Next run</span>
+    <span class="sf-val" id="countdown">15:00</span>
+  </div>
+</aside>
+
+<main>
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('overview',this)">Overview</button>
+    <button class="tab" onclick="switchTab('log',this)">Live Log</button>
+    <button class="tab" onclick="switchTab('history',this)">Tx History</button>
+    <div class="tab-r"><span class="tab-r-txt">Interval 15 min · Arc Testnet</span></div>
+  </div>
+
+  <div class="panel active" id="panel-overview">
+    <div class="ov-scroll">
+      <div class="sig-row">
+        <div class="sig-c"><div class="sig-lbl">Funding Rate</div><div class="sig-val" id="sFR">—</div><div class="sig-sub" id="sFRs">loading</div></div>
+        <div class="sig-c"><div class="sig-lbl">Open Interest Δ</div><div class="sig-val" id="sOI">—</div><div class="sig-sub" id="sOIs">loading</div></div>
+        <div class="sig-c"><div class="sig-lbl">Signal Score</div><div class="sig-val" id="sSig">—</div><div class="sig-sub" id="sSigs">scale −3 to +3</div></div>
+        <div class="sig-c"><div class="sig-lbl">Rebalance</div><div class="sig-val" id="sReb">—</div><div class="sig-sub" id="sRebs">awaiting</div></div>
+      </div>
+      <div class="card-2">
+        <div class="ov-card">
+          <div class="ov-hdr">
+            <span class="ov-title">Unified Balance · Circle Gateway</span>
+            <span class="ov-sub" style="color:var(--accent);">App Kit</span>
+          </div>
+          <div class="ov-body">
+            <div class="ub-row">
+              <div class="ub-left"><div class="ub-dot" style="background:#627eea;"></div><span class="ub-chain">Base Sepolia</span></div>
+              <div><span class="ub-val" id="ubBase">—</span><span class="ub-usdc">USDC</span></div>
+            </div>
+            <div class="ub-row">
+              <div class="ub-left"><div class="ub-dot" style="background:var(--accent);"></div><span class="ub-chain">Arc Testnet</span><span class="ub-badge">ACTIVE</span></div>
+              <div><span class="ub-val ok" id="ubArc">—</span><span class="ub-usdc">USDC</span></div>
+            </div>
+            <div class="ub-row" style="border-bottom:none;margin-top:4px;">
+              <div class="ub-left"><div class="ub-dot" style="background:var(--ok);"></div><span class="ub-chain">Total</span></div>
+              <div><span class="ub-val ok" id="ubTotal">—</span><span class="ub-usdc">USDC</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="ov-card">
+          <div class="ov-hdr"><span class="ov-title">BTC Price · 8 Snapshots (24h)</span><span class="ov-sub" id="btcLatest">—</span></div>
+          <div class="ov-body" style="display:flex;align-items:flex-end;height:72px;padding-top:8px;">
+            <div class="spark" id="btcSpark"></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-2">
+        <div class="ov-card">
+          <div class="ov-hdr"><span class="ov-title">Arc Bridge Transactions</span><span class="ov-sub" style="color:var(--accent);">Circle Gateway</span></div>
+          <div class="ov-body" id="arcTxList"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);">No bridge txs yet</div></div>
+        </div>
+        <div class="ov-card">
+          <div class="ov-hdr"><span class="ov-title">Circle Primitives Used</span></div>
+          <div class="ov-body">
+            <div class="prim-grid">
+              <div class="prim"><div class="prim-name">Gateway</div><div class="prim-desc">Unified balance + sub-500ms cross-chain</div></div>
+              <div class="prim"><div class="prim-name">USYC</div><div class="prim-desc">Risk-off stable yield parking</div></div>
+              <div class="prim"><div class="prim-name">USDC</div><div class="prim-desc">Native settlement on Arc</div></div>
+              <div class="prim"><div class="prim-name">App Kit</div><div class="prim-desc">Unified Balance + Bridge components</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-log">
+    <div class="log-wrap">
+      <div class="log-bar">
+        <div class="log-dots"><div class="ld" style="background:#ff5f57"></div><div class="ld" style="background:#febc2e"></div><div class="ld" style="background:#28c840"></div></div>
+        <span class="log-title">Agent Output — Live</span>
+        <button class="log-clr" onclick="clrLog()">Clear</button>
+      </div>
+      <div id="log"><span class="ll dim">[system] Arcana ready. Gateway connected. Waiting for actions...</span></div>
+    </div>
+  </div>
+
+  <div class="panel" id="panel-history">
+    <div class="hist-wrap" id="txList"><div class="empty"><div class="empty-icon">◎</div><div class="empty-txt">Loading history...</div></div></div>
+  </div>
+</main>
+</div>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">Confirm</div>
+    <div class="modal-desc" id="modalDesc"></div>
+    <div class="modal-row">
+      <button class="mb" onclick="closeModal()">Cancel</button>
+      <button class="mb ok-mb" id="modalOk" onclick="confirmAction()">Execute</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"><span id="toastTxt">—</span></div>
+
+<script>
+const API='';let wallet=null,pendingAction=null,countdown=900,txHistory=[];
+async function connectWallet(){if(wallet)return;if(!window.ethereum){showToast('MetaMask not detected','danger');return;}const label=document.getElementById('connectLabel');try{label.innerHTML='<span class="spin"></span>Connecting';const accs=await window.ethereum.request({method:'eth_requestAccounts'});wallet=accs[0];const btn=document.getElementById('connectBtn');btn.classList.add('connected');label.textContent=wallet.slice(0,6)+'…'+wallet.slice(-4);showToast('Connected: '+wallet.slice(0,10)+'…','ok');addLog('Wallet connected: '+wallet,'ok');}catch(e){label.textContent='Connect Wallet';showToast(e.message,'danger');}}
+function switchTab(name,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+name).classList.add('active');btn.classList.add('active');if(name==='history')loadHistory();}
+function addLog(txt,type=''){const log=document.getElementById('log');const ts=new Date().toTimeString().slice(0,8);const s=document.createElement('span');s.className='ll '+type;s.textContent='['+ts+'] '+txt;log.appendChild(s);log.scrollTop=log.scrollHeight;}
+function clrLog(){document.getElementById('log').innerHTML='';}
+function connectSSE(){const sse=new EventSource(API+'/events');sse.onopen=()=>setOnline(true);sse.onerror=()=>{setOnline(false);setTimeout(connectSSE,4000);};sse.onmessage=e=>{try{const m=JSON.parse(e.data);if(m.type==='log')addLog(m.line,logClass(m.line));else if(m.type==='regime')updateRegime(m.data);else if(m.type==='balances')updateBalances(m.data);else if(m.type==='done'){addLog('Done.','ok');showToast('Completed','ok');}else if(m.type==='error'){addLog(m.message,'danger');showToast(m.message,'danger');}}catch{}};}
+function logClass(l){if(/✅|minted|success/i.test(l))return'ok';if(/❌|error|fail/i.test(l))return'danger';if(/⚠|warn|skip/i.test(l))return'warn';if(/\[arc\]|\[agent\]|gateway|attestation/i.test(l))return'accent';return'';}
+function setOnline(ok){document.getElementById('sysDot').className='sys-dot'+(ok?'':' off');}
+function updateRegime(d){if(!d)return;const r=d.regime||'neutral';const navR=document.getElementById('navRegime');navR.className='regime-pill '+r;document.getElementById('navTxt').textContent=r.toUpperCase().replace('_','-');document.getElementById('rcBar').className='rc-bar '+r;const badge=document.getElementById('rcBadge');badge.className='rc-badge '+r;badge.textContent=r.toUpperCase().replace('_','-');document.getElementById('rcPhase').textContent=d.phase||'—';document.getElementById('rcReason').textContent=d.reasoning||'—';const pct=Math.round((d.confidence||0)*100);document.getElementById('confFill').style.width=pct+'%';document.getElementById('confNum').textContent=pct+'%';if(d.btc_price){document.getElementById('mBtc').textContent='$'+Number(d.btc_price).toLocaleString();document.getElementById('btcLatest').textContent='$'+Number(d.btc_price).toLocaleString();}const sig=d.signal_score;if(sig!==undefined){const el=document.getElementById('mSig');el.textContent=(sig>0?'+':'')+sig;el.className='mc-val '+(sig>0?'ok':sig<0?'danger':'');const sSig=document.getElementById('sSig');sSig.textContent=(sig>0?'+':'')+sig;sSig.className='sig-val '+(sig>0?'ok':sig<0?'danger':'warn');document.getElementById('sSigs').textContent=sig>0?'bullish':sig<0?'bearish':'neutral';document.getElementById('sSigs').className='sig-sub '+(sig>0?'ok':sig<0?'danger':'');}const fr=d.funding_rate;if(fr!==undefined){const pctFr=(fr*100).toFixed(4)+'%';document.getElementById('sFR').textContent=pctFr;document.getElementById('sFR').className='sig-val '+(fr>0?'ok':fr<0?'danger':'');document.getElementById('sFRs').textContent=fr>0?'long bias':fr<0?'short bias':'neutral';document.getElementById('sFRs').className='sig-sub '+(fr>0?'ok':fr<0?'danger':'');}const oi=d.open_interest;if(oi!==undefined){document.getElementById('sOI').textContent=(oi/1e6).toFixed(1)+'M';}const reb=d.rebalance;if(reb!==undefined){document.getElementById('sReb').textContent=reb?'YES':'NO';document.getElementById('sReb').className='sig-val '+(reb?'ok':'');document.getElementById('sRebs').textContent=reb?'action required':'hold';document.getElementById('sRebs').className='sig-sub '+(reb?'ok':'');}}
+function updateBalances(d){const base=(d.baseSepolia||0).toFixed(2);const arc=(d.arcTestnet||0).toFixed(2);const total=((d.baseSepolia||0)+(d.arcTestnet||0)).toFixed(2);document.getElementById('ubBase').textContent=base;document.getElementById('ubArc').textContent=arc;document.getElementById('ubTotal').textContent=total;document.getElementById('mArc').textContent=arc;document.getElementById('mGw').textContent=base;}
+function renderSpark(data){const el=document.getElementById('btcSpark');el.innerHTML='';if(!data||!data.length)return;const vals=data.map(d=>d.btc_price||0).filter(Boolean);if(!vals.length)return;const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;vals.forEach(v=>{const b=document.createElement('div');b.className='spark-b';b.style.height=Math.max(3,((v-min)/range)*32)+'px';b.title='$'+v.toLocaleString();el.appendChild(b);});}
+async function fetchState(){try{const r=await fetch(API+'/api/regime');if(r.ok)updateRegime(await r.json());}catch{}try{const r=await fetch(API+'/api/balances');if(r.ok)updateBalances(await r.json());}catch{}try{const r=await fetch(API+'/api/snapshots');if(r.ok)renderSpark(await r.json());}catch{}try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();renderArcTxList();}}catch{}}
+function renderArcTxList(){const el=document.getElementById('arcTxList');const arcTxs=txHistory.filter(t=>t.type==='arcana-arc-bridge').slice(-4);if(!arcTxs.length){el.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--text3);">No bridge txs yet</div>';return;}el.innerHTML=arcTxs.reverse().map(tx=>`<div class="btx-item"><div class="btx-icon">⬡</div><div class="btx-info"><div class="btx-top">${tx.amount} USDC → Arc Testnet</div><div class="btx-bot">${(tx.tx||'').slice(0,20)}…</div></div><div class="btx-val">+${tx.amount}</div></div>`).join('');}
+async function loadHistory(){try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();renderHistory();}}catch{renderHistory();}}
+function renderHistory(){const list=document.getElementById('txList');if(!txHistory.length){list.innerHTML='<div class="empty"><div class="empty-icon">◎</div><div class="empty-txt">No transactions yet</div></div>';return;}const tm={'arcana-arc-bridge':{icon:'⬡',cls:'bridge',label:'Arc Bridge'},'arcana-risk-on':{icon:'↑',cls:'on',label:'Risk-On Rebalance'},'arcana-risk-off':{icon:'⬇',cls:'off',label:'Risk-Off'}};list.innerHTML=txHistory.slice().reverse().map(tx=>{const t=tm[tx.type]||{icon:'◎',cls:'',label:tx.type};const hash=tx.tx?tx.tx.slice(0,10)+'…'+tx.tx.slice(-6):null;return`<div class="tx-card"><div class="tx-ico ${t.cls}">${t.icon}</div><div class="tx-body"><div class="tx-type">${t.label}</div><div class="tx-meta">${tx.regime||'—'} · ${tx.amount?tx.amount+' USDC':''}</div></div><div class="tx-right"><div class="tx-amt">${tx.amount?tx.amount+' USDC':'—'}</div><div class="tx-time">${(tx.time||'').slice(0,19).replace('T',' ')}</div>${hash?`<div class="tx-hash" onclick="window.open('https://explorer.testnet.arc-node.thecanteenapp.com/tx/${tx.tx}','_blank')">${hash}</div>`:''}</div></div>`;}).join('');}
+const ACTIONS={'risk-on':{title:'Execute Risk-On Rebalance',desc:'Deploy available USDC into the highest-yield vault via LI.FI cross-chain routing.',ok:true},'risk-off':{title:'Risk-Off: Bridge to Arc',desc:'Park idle USDC on Arc Testnet via Circle Gateway attestation. Capital available for USYC stable yield.',ok:false},'regime-check':{title:'Run Regime Detection',desc:'3-agent analysis (Architect / Auditor / Arbiter) using BTC price, funding rate, and OI snapshots. ~30s.',ok:true}};
+function trigger(action){pendingAction=action;const m=ACTIONS[action];document.getElementById('modalTitle').textContent=m.title;document.getElementById('modalDesc').textContent=m.desc;const ok=document.getElementById('modalOk');ok.className='mb '+(m.ok?'ok-mb':'danger-mb');ok.textContent=action==='risk-off'?'Bridge & Park':'Execute';document.getElementById('modalBg').classList.add('open');}
+function closeModal(){document.getElementById('modalBg').classList.remove('open');pendingAction=null;}
+async function confirmAction(){closeModal();if(!pendingAction)return;addLog('Dispatching: '+pendingAction+'…','accent');switchTab('log',document.querySelectorAll('.tab')[1]);try{const r=await fetch(API+'/api/'+pendingAction,{method:'POST',headers:{'Content-Type':'application/json'}});if(r.ok)showToast('Action dispatched','ok');else throw new Error();}catch{addLog('[demo] No backend — running simulation','warn');showToast('Demo mode active','warn');if(pendingAction==='regime-check')demoRegime();if(pendingAction==='risk-off')demoArcBridge();}pendingAction=null;}
+function demoRegime(){const steps=[[300,'[arcana] Running regime detection...','accent'],[800,'[architect] Generating evaluation axes (BTC momentum, FR z-score, OI delta)...',''],[1500,'[auditor] Reviewing last 15 feedback entries...',''],[2200,'[arbiter] Probability: risk_off=0.68 / risk_on=0.32',''],[3100,'✅ Regime: RISK_OFF | Confidence: 72% | Phase: Fear','ok']];steps.forEach(([ms,msg,cls])=>setTimeout(()=>addLog(msg,cls),ms));setTimeout(()=>updateRegime({regime:'risk_off',phase:'Fear',confidence:0.72,reasoning:'Negative funding rate (−0.03%), OI declining 8% over 3h, BTC −2.1% vs 24h MA',btc_price:103800,signal_score:-2,rebalance:true,funding_rate:-0.0003}),3200);}
+function demoArcBridge(){const steps=[[300,'[agent] risk_off: checking Gateway balance...','accent'],[700,'[arc] Gateway baseSepolia: 1 USDC available',''],[1000,'[arc] Signing burn intent (1 USDC: Base Sepolia → Arc Testnet)...',''],[1800,'[arc] Requesting Gateway attestation...',''],[2600,'[arc] Attestation received.','ok'],[3000,'[arc] Minting USDC on Arc Testnet...',''],[3800,'✅ Minted on Arc Testnet: 0xd6e2549d4d80fd6078005...','ok']];steps.forEach(([ms,msg,cls])=>setTimeout(()=>addLog(msg,cls),ms));setTimeout(()=>{updateBalances({baseSepolia:0,arcTestnet:1});txHistory.push({type:'arcana-arc-bridge',amount:'1',regime:'risk_off',tx:'0xd6e2549d4d80fd607800560e3edf7c703ff00f070ec2f1e01cfcaad90cfdb742',time:new Date().toISOString()});renderArcTxList();showToast('Bridged 1 USDC → Arc Testnet','ok');},3900);}
+let toastT;function showToast(msg,type='ok'){const t=document.getElementById('toast');document.getElementById('toastTxt').textContent=msg;t.className='toast '+type;clearTimeout(toastT);setTimeout(()=>t.classList.add('show'),10);toastT=setTimeout(()=>t.classList.remove('show'),3200);}
+setInterval(()=>{countdown=Math.max(0,countdown-1);const m=String(Math.floor(countdown/60)).padStart(2,'0');const s=String(countdown%60).padStart(2,'0');document.getElementById('countdown').textContent=m+':'+s;if(countdown===0){countdown=900;fetchState();}},1000);
+document.getElementById('sOI').textContent='−5.2%';document.getElementById('sOIs').textContent='3h window';document.getElementById('sOIs').className='sig-sub danger';document.getElementById('sOI').className='sig-val danger';
+connectSSE();fetchState();setInterval(fetchState,120000);
+setTimeout(()=>{updateRegime({regime:'risk_on',phase:'Greed',confidence:0.81,reasoning:'Positive funding (+0.012%), OI rising, BTC above 20d MA. Bullish bias.',btc_price:104850,signal_score:2,rebalance:false,funding_rate:0.0012});updateBalances({baseSepolia:1,arcTestnet:1});renderSpark([{btc_price:101200},{btc_price:102800},{btc_price:103100},{btc_price:102400},{btc_price:104100},{btc_price:103800},{btc_price:104500},{btc_price:104850}]);},1000);
+</script>
+</body>
+</html>

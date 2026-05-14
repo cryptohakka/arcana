@@ -1,0 +1,7 @@
+.env
+node_modules/
+tx_history.json
+positions.json
+regime.json
+snapshots.json
+*.log
