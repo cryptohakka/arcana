@@ -24,10 +24,12 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@circle-fin/developer-controlled-wallets": "^10.3.1",
     "@x402/core": "^2.10.0",
     "@x402/evm": "^2.10.0",
     "@x402/express": "^2.10.0",
     "axios": "^1.15.0",
+    "better-sqlite3": "^12.10.0",
     "dotenv": "^16.6.1",
     "ethers": "^6.16.0",
     "express": "^5.2.1",

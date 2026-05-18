@@ -255,7 +255,7 @@ async function getGatewayBalance(address = null) {
     balances[chain] = parseFloat(b.balance);
   }
 
-  console.log('[arc] Gateway balances:', balances);
+  
   return balances;
 }
 
@@ -268,3 +268,35 @@ if (require.main === module) {
   if (cmd === 'transfer') transferToArc(process.argv[3] || '1').catch(console.error);
   if (cmd === 'balance')  getGatewayBalance().catch(console.error);
 }
+
+// ── Dev-Controlled Wallet operations ─────────────────────────────────────────
+const { initiateDeveloperControlledWalletsClient } = require('@circle-fin/developer-controlled-wallets');
+
+function getCircleClient() {
+  return initiateDeveloperControlledWalletsClient({
+    apiKey:       process.env.CIRCLE_API_KEY,
+    entitySecret: process.env.CIRCLE_ENTITY_SECRET,
+  });
+}
+
+async function getAgentWalletBalance(walletId) {
+  const client = getCircleClient();
+  const res = await client.getWalletTokenBalance({ id: walletId || process.env.CIRCLE_WALLET_ID });
+  return res.data?.tokenBalances || [];
+}
+
+async function sendFromAgentWallet(toAddress, amountUsdc, walletId) {
+  const client = getCircleClient();
+  const ARC_USDC = '0x3600000000000000000000000000000000000000';
+  const tx = await client.createTransaction({
+    walletId:           walletId || process.env.CIRCLE_WALLET_ID,
+    tokenAddress:       ARC_USDC,
+    destinationAddress: toAddress,
+    amounts:            [amountUsdc.toString()],
+    fee:                { type: 'level', config: { feeLevel: 'MEDIUM' } },
+    blockchain:         'ARC-TESTNET',
+  });
+  return tx.data?.id;
+}
+
+module.exports = Object.assign(module.exports, { getAgentWalletBalance, sendFromAgentWallet });

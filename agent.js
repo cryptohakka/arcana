@@ -60,7 +60,7 @@ async function findBestVault(walletAddress, amountUsd) {
 }
 
 // ── Risk-on: deploy into best yield vault ────────────────────────────────────
-async function executeRiskOn(regime, walletAddress) {
+async function executeRiskOn(regime, walletAddress, walletId, eoa) {
   console.log('[agent] risk_on: scanning best vault...');
   const fromChainId = USYC_CHAIN; // start from Base where USYC lives
 
@@ -100,8 +100,7 @@ async function executeRiskOn(regime, walletAddress) {
       depositPack:       best.vault.depositPacks?.[0]?.name || '',
     });
 
-    const positions = loadPositions();
-    positions.push({
+    if (eoa) savePosition(eoa, {
       vaultAddress: best.vault.address,
       vaultName:    best.vault.name,
       protocol:     best.vault.protocol,
@@ -109,7 +108,6 @@ async function executeRiskOn(regime, walletAddress) {
       valueUsd:     usdcBal,
       depositedAt:  new Date().toISOString(),
     });
-    savePositions(positions);
 
     recordTx({
       type: 'arcana-risk-on',
@@ -128,10 +126,10 @@ async function executeRiskOn(regime, walletAddress) {
 }
 
 // ── Risk-off: consolidate into USYC ──────────────────────────────────────────
-async function executeRiskOff(regime, walletAddress) {
+async function executeRiskOff(regime, walletAddress, walletId, eoa) {
   console.log('[agent] risk_off: checking USYC position...');
 
-  const positions = loadPositions();
+  const positions = eoa ? [getPosition(eoa)].filter(Boolean) : loadPositions();
   if (positions.length === 0) {
     await notify(
       `🔴 **Risk-Off** — No active positions to consolidate.\n` +
@@ -177,29 +175,87 @@ async function executeRiskOff(regime, walletAddress) {
     console.error('[agent] arc bridge error:', e.message);
   }
 
-  savePositions([]);
+  if (eoa) clearPosition(eoa); else savePositions([]);
   await notify(`✅ **Consolidated** — Capital parked in USYC stable yield`);
+}
+
+// ── DB ────────────────────────────────────────────────────────────────────────
+const Database = require('better-sqlite3');
+function getDb() { return new Database('./users.db'); }
+
+function getLastRegime() {
+  const db = getDb();
+  const row = db.prepare('SELECT regime FROM regime_history ORDER BY id DESC LIMIT 1').get();
+  db.close();
+  return row?.regime || null;
+}
+
+function saveRegime(regime) {
+  const db = getDb();
+  db.prepare('INSERT INTO regime_history (regime, phase, confidence, btc_price, rebalance) VALUES (?,?,?,?,?)')
+    .run(regime.regime, regime.phase, regime.confidence, regime.btc_price, regime.rebalance ? 1 : 0);
+  db.close();
+}
+
+function getAllUsers() {
+  const db = getDb();
+  const users = db.prepare('SELECT eoa, wallet_id, wallet_address FROM users').all();
+  db.close();
+  return users;
+}
+
+function savePosition(eoa, pos) {
+  const db = getDb();
+  db.prepare(`INSERT OR REPLACE INTO user_positions
+    (eoa, vault_address, vault_name, protocol, chain_id, value_usd, deposited_at)
+    VALUES (?,?,?,?,?,?,?)`)
+    .run(eoa, pos.vaultAddress, pos.vaultName, pos.protocol, pos.chainId, pos.valueUsd, pos.depositedAt);
+  db.close();
+}
+
+function clearPosition(eoa) {
+  const db = getDb();
+  db.prepare('DELETE FROM user_positions WHERE eoa=?').run(eoa);
+  db.close();
+}
+
+function getPosition(eoa) {
+  const db = getDb();
+  const row = db.prepare('SELECT * FROM user_positions WHERE eoa=?').get(eoa);
+  db.close();
+  return row || null;
 }
 
 // ── Main loop ─────────────────────────────────────────────────────────────────
 async function run() {
-  const walletAddress = new ethers.Wallet(process.env.PRIVATE_KEY).address;
-  console.log(`[arcana] wallet: ${walletAddress}`);
-  await notify(`🚀 **Arcana Agent Started**\nWallet: \`${walletAddress}\`\nInterval: ${INTERVAL_MS / 60000} min`);
+  await notify(`🚀 **Arcana Agent Started**\nInterval: ${INTERVAL_MS / 60000} min`);
 
   while (true) {
     try {
       console.log('\n[arcana] running regime detection...');
       const regime = await detectRegime();
+      const lastRegime = getLastRegime();
+      saveRegime(regime);
 
-      if (!regime.rebalance) {
+      const regimeChanged = lastRegime !== null && lastRegime !== regime.regime;
+
+      if (!regime.rebalance && !regimeChanged) {
         console.log(`[arcana] no rebalance needed (regime=${regime.regime}, confidence=${regime.confidence})`);
       } else {
-        if (regime.regime === 'risk_on') {
-          await executeRiskOn(regime, walletAddress);
-        } else {
-          await executeRiskOff(regime, walletAddress);
-        }
+        const users = getAllUsers();
+        await notify(`🔄 **Regime: ${regime.regime.toUpperCase()}** | Users: ${users.length} | BTC: $${regime.btc_price}`);
+
+        await Promise.allSettled(users.map(async (user) => {
+          try {
+            if (regime.regime === 'risk_on') {
+              await executeRiskOn(regime, user.wallet_address, user.wallet_id, user.eoa);
+            } else {
+              await executeRiskOff(regime, user.wallet_address, user.wallet_id, user.eoa);
+            }
+          } catch (e) {
+            console.error(`[arcana] user ${user.eoa.slice(0,8)} error:`, e.message);
+          }
+        }));
       }
     } catch (e) {
       console.error('[arcana] loop error:', e.message);

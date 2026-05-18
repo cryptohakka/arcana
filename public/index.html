@@ -327,6 +327,10 @@ main{display:flex;flex-direction:column;overflow:hidden;}
               <div class="ub-left"><div class="ub-dot" style="background:var(--accent);"></div><span class="ub-chain">Arc Testnet</span><span class="ub-badge">ACTIVE</span></div>
               <div><span class="ub-val ok" id="ubArc">—</span><span class="ub-usdc">USDC</span></div>
             </div>
+            <div class="ub-row">
+              <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain">Agent Wallet</span><span class="ub-badge" style="background:#7b5ea7;">DCW</span></div>
+              <div><span class="ub-val" id="ubAgent">—</span><span class="ub-usdc">USDC</span></div>
+            </div>
             <div class="ub-row" style="border-bottom:none;margin-top:4px;">
               <div class="ub-left"><div class="ub-dot" style="background:var(--ok);"></div><span class="ub-chain">Total</span></div>
               <div><span class="ub-val ok" id="ubTotal">—</span><span class="ub-usdc">USDC</span></div>
@@ -391,7 +395,41 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 
 <script>
 const API='';let wallet=null,pendingAction=null,countdown=900,txHistory=[];
-async function connectWallet(){if(wallet)return;if(!window.ethereum){showToast('MetaMask not detected','danger');return;}const label=document.getElementById('connectLabel');try{label.innerHTML='<span class="spin"></span>Connecting';const accs=await window.ethereum.request({method:'eth_requestAccounts'});wallet=accs[0];const btn=document.getElementById('connectBtn');btn.classList.add('connected');label.textContent=wallet.slice(0,6)+'…'+wallet.slice(-4);showToast('Connected: '+wallet.slice(0,10)+'…','ok');addLog('Wallet connected: '+wallet,'ok');}catch(e){label.textContent='Connect Wallet';showToast(e.message,'danger');}}
+async function connectWallet(){if(wallet)return;if(!window.ethereum){showToast('MetaMask not detected','danger');return;}const label=document.getElementById('connectLabel');try{label.innerHTML='<span class="spin"></span>Connecting';const accs=await window.ethereum.request({method:'eth_requestAccounts'});wallet=accs[0];const btn=document.getElementById('connectBtn');btn.classList.add('connected');label.textContent=wallet.slice(0,6)+'…'+wallet.slice(-4);showToast('Connected: '+wallet.slice(0,10)+'…','ok');addLog('Wallet connected: '+wallet,'ok');await registerUserWallet(wallet);}catch(e){label.textContent='Connect Wallet';showToast(e.message,'danger');}}
+async function registerUserWallet(eoa){
+  try{
+    // 既存チェック
+    const check=await fetch(API+'/api/user/'+eoa);
+    const data=await check.json();
+    if(data.exists){
+      showDepositAddress(data.walletAddress);
+      addLog('Agent wallet: '+data.walletAddress,'ok');
+      return;
+    }
+    // 署名
+    addLog('Sign once to create your agent wallet…','accent');
+    const message='Arcana: create agent wallet for '+eoa+' at '+new Date().toISOString().slice(0,10);
+    const signature=await window.ethereum.request({method:'personal_sign',params:[message,eoa]});
+    // ウォレット生成
+    addLog('Creating your dedicated agent wallet…','');
+    const res=await fetch(API+'/api/user/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eoa,signature,message})});
+    const result=await res.json();
+    if(result.error)throw new Error(result.error);
+    showDepositAddress(result.walletAddress);
+    addLog((result.created?'✅ Agent wallet created: ':'✅ Agent wallet: ')+result.walletAddress,'ok');
+    showToast(result.created?'Agent wallet created!':'Welcome back!','ok');
+  }catch(e){addLog('Wallet setup failed: '+e.message,'danger');}
+}
+function showDepositAddress(addr){
+  let el=document.getElementById('depositAddr');
+  if(!el){
+    const box=document.createElement('div');
+    box.style.cssText='background:var(--card);border:1px solid var(--accent);border-radius:8px;padding:12px 16px;margin:8px 0;font-size:12px;';
+    box.innerHTML='<div style="color:var(--muted);margin-bottom:4px;">DEPOSIT ADDRESS (Arc Testnet)</div><div id="depositAddr" style="color:var(--accent);word-break:break-all;cursor:pointer;" onclick="navigator.clipboard.writeText(this.textContent);showToast(&quot;Copied!&quot;,&quot;ok&quot;)">'+addr+'</div><div style="color:var(--muted);font-size:11px;margin-top:4px;">Send USDC here · Agent manages the rest</div>';
+    const actions=document.querySelector('.actions-list')||document.querySelector('.ov-body');
+    if(actions)actions.prepend(box);
+  }else{el.textContent=addr;}
+}
 function switchTab(name,btn){document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));document.getElementById('panel-'+name).classList.add('active');btn.classList.add('active');if(name==='history')loadHistory();}
 function addLog(txt,type=''){const log=document.getElementById('log');const ts=new Date().toTimeString().slice(0,8);const s=document.createElement('span');s.className='ll '+type;s.textContent='['+ts+'] '+txt;log.appendChild(s);log.scrollTop=log.scrollHeight;}
 function clrLog(){document.getElementById('log').innerHTML='';}
@@ -399,7 +437,7 @@ function connectSSE(){const sse=new EventSource(API+'/events');sse.onopen=()=>se
 function logClass(l){if(/✅|minted|success/i.test(l))return'ok';if(/❌|error|fail/i.test(l))return'danger';if(/⚠|warn|skip/i.test(l))return'warn';if(/\[arc\]|\[agent\]|gateway|attestation/i.test(l))return'accent';return'';}
 function setOnline(ok){document.getElementById('sysDot').className='sys-dot'+(ok?'':' off');}
 function updateRegime(d){if(!d)return;const r=d.regime||'neutral';const navR=document.getElementById('navRegime');navR.className='regime-pill '+r;document.getElementById('navTxt').textContent=r.toUpperCase().replace('_','-');document.getElementById('rcBar').className='rc-bar '+r;const badge=document.getElementById('rcBadge');badge.className='rc-badge '+r;badge.textContent=r.toUpperCase().replace('_','-');document.getElementById('rcPhase').textContent=d.phase||'—';document.getElementById('rcReason').textContent=d.reasoning||'—';const pct=Math.round((d.confidence||0)*100);document.getElementById('confFill').style.width=pct+'%';document.getElementById('confNum').textContent=pct+'%';if(d.btc_price){document.getElementById('mBtc').textContent='$'+Number(d.btc_price).toLocaleString();document.getElementById('btcLatest').textContent='$'+Number(d.btc_price).toLocaleString();}const sig=d.signal_score;if(sig!==undefined){const el=document.getElementById('mSig');el.textContent=(sig>0?'+':'')+sig;el.className='mc-val '+(sig>0?'ok':sig<0?'danger':'');const sSig=document.getElementById('sSig');sSig.textContent=(sig>0?'+':'')+sig;sSig.className='sig-val '+(sig>0?'ok':sig<0?'danger':'warn');document.getElementById('sSigs').textContent=sig>0?'bullish':sig<0?'bearish':'neutral';document.getElementById('sSigs').className='sig-sub '+(sig>0?'ok':sig<0?'danger':'');}const fr=d.funding_rate;if(fr!==undefined){const pctFr=(fr*100).toFixed(4)+'%';document.getElementById('sFR').textContent=pctFr;document.getElementById('sFR').className='sig-val '+(fr>0?'ok':fr<0?'danger':'');document.getElementById('sFRs').textContent=fr>0?'long bias':fr<0?'short bias':'neutral';document.getElementById('sFRs').className='sig-sub '+(fr>0?'ok':fr<0?'danger':'');}const oi=d.open_interest;if(oi!==undefined){document.getElementById('sOI').textContent=(oi/1e6).toFixed(1)+'M';}const reb=d.rebalance;if(reb!==undefined){document.getElementById('sReb').textContent=reb?'YES':'NO';document.getElementById('sReb').className='sig-val '+(reb?'ok':'');document.getElementById('sRebs').textContent=reb?'action required':'hold';document.getElementById('sRebs').className='sig-sub '+(reb?'ok':'');}}
-function updateBalances(d){const base=(d.baseSepolia||0).toFixed(2);const arc=(d.arcTestnet||0).toFixed(2);const total=((d.baseSepolia||0)+(d.arcTestnet||0)).toFixed(2);document.getElementById('ubBase').textContent=base;document.getElementById('ubArc').textContent=arc;document.getElementById('ubTotal').textContent=total;document.getElementById('mArc').textContent=arc;document.getElementById('mGw').textContent=base;}
+function updateBalances(d){const base=(d.baseSepolia||0).toFixed(2);const arc=(d.arcTestnet||0).toFixed(2);const agent=(d.agentWallet||0).toFixed(2);const total=((d.baseSepolia||0)+(d.arcTestnet||0)+(d.agentWallet||0)).toFixed(2);document.getElementById('ubBase').textContent=base;document.getElementById('ubArc').textContent=arc;document.getElementById('ubTotal').textContent=total;document.getElementById('mArc').textContent=arc;document.getElementById('mGw').textContent=base;const el=document.getElementById('ubAgent');if(el)el.textContent=agent;}
 function renderSpark(data){const el=document.getElementById('btcSpark');el.innerHTML='';if(!data||!data.length)return;const vals=data.map(d=>d.btc_price||0).filter(Boolean);if(!vals.length)return;const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;vals.forEach(v=>{const b=document.createElement('div');b.className='spark-b';b.style.height=Math.max(3,((v-min)/range)*32)+'px';b.title='$'+v.toLocaleString();el.appendChild(b);});}
 async function fetchState(){try{const r=await fetch(API+'/api/regime');if(r.ok)updateRegime(await r.json());}catch{}try{const r=await fetch(API+'/api/balances');if(r.ok)updateBalances(await r.json());}catch{}try{const r=await fetch(API+'/api/snapshots');if(r.ok)renderSpark(await r.json());}catch{}try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();renderArcTxList();}}catch{}}
 function renderArcTxList(){const el=document.getElementById('arcTxList');const arcTxs=txHistory.filter(t=>t.type==='arcana-arc-bridge').slice(-4);if(!arcTxs.length){el.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--text3);">No bridge txs yet</div>';return;}el.innerHTML=arcTxs.reverse().map(tx=>`<div class="btx-item"><div class="btx-icon">⬡</div><div class="btx-info"><div class="btx-top">${tx.amount} USDC → Arc Testnet</div><div class="btx-bot">${(tx.tx||'').slice(0,20)}…</div></div><div class="btx-val">+${tx.amount}</div></div>`).join('');}
