@@ -334,7 +334,11 @@ main{display:flex;flex-direction:column;overflow:hidden;}
       <div class="log-bar">
         <div class="log-dots"><div class="ld" style="background:#ff5f57"></div><div class="ld" style="background:#febc2e"></div><div class="ld" style="background:#28c840"></div></div>
         <span class="log-title">Agent Output — Live</span>
-        <button class="log-clr" onclick="clrLog()">Clear</button>
+        <div style="display:flex;gap:6px;margin-left:auto;">
+          <button class="log-clr" style="color:#4ade80;border-color:#4ade80;" onclick="forceAction('risk-on')">▶ Risk-On</button>
+          <button class="log-clr" style="color:#f87171;border-color:#f87171;" onclick="forceAction('risk-off')">▶ Risk-Off</button>
+          <button class="log-clr" onclick="clrLog()">Clear</button>
+        </div>
       </div>
       <div id="log"><span class="ll dim">[system] Arcana ready. Gateway connected. Waiting for actions...</span></div>
     </div>
@@ -439,6 +443,13 @@ function addLog(txt,type=''){
   log.scrollTop=log.scrollHeight;
 }
 function clrLog(){document.getElementById('log').innerHTML='';}
+async function forceAction(type){
+  addLog(`[manual] triggering ${type}...`,'dim');
+  try{
+    const r=await fetch(API+'/api/'+type,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:wallet})});
+    if(!r.ok)addLog('[error] '+await r.text(),'err');
+  }catch(e){addLog('[error] '+e.message,'err');}
+}
 
 function connectSSE(){
   const sse=new EventSource(API+'/events');
@@ -551,9 +562,14 @@ async function fetchState(){
 
 function renderArcTxList(){
   const el=document.getElementById('arcTxList');
-  const arcTxs=txHistory.filter(t=>t.type==='arcana-arc-bridge').slice(-4);
+  const arcTxs=txHistory.filter(t=>t.type==='arcana-arc-bridge'||t.type==='arcana-arc-retrieve').slice(-4);
   if(!arcTxs.length){el.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--text3);">No bridge txs yet</div>';return;}
-  el.innerHTML=arcTxs.reverse().map(tx=>`<div class="btx-item"><div class="btx-icon">⬡</div><div class="btx-info"><div class="btx-top">${tx.amount} USDC → Arc Testnet</div><div class="btx-bot">${(tx.tx||'').slice(0,24)}…</div></div><div class="btx-val">+${tx.amount}</div></div>`).join('');
+  el.innerHTML=arcTxs.reverse().map(tx=>{
+    const isRetrieve=tx.type==='arcana-arc-retrieve';
+    const label=isRetrieve?`${tx.amount} USDC ← Arc Testnet`:`${tx.amount} USDC → Arc Testnet`;
+    const icon=isRetrieve?'⬢':'⬡';
+    return`<div class="btx-item"><div class="btx-icon">${icon}</div><div class="btx-info"><div class="btx-top">${label}</div><div class="btx-bot">${(tx.tx||'pending').slice(0,24)}…</div></div><div class="btx-val">${isRetrieve?'-':'+'}${tx.amount}</div></div>`;
+  }).join('');
 }
 
 async function loadHistory(){
@@ -563,7 +579,7 @@ async function loadHistory(){
 function renderHistory(){
   const list=document.getElementById('txList');
   if(!txHistory.length){list.innerHTML='<div class="empty"><div class="empty-icon">◎</div><div class="empty-txt">No transactions yet</div></div>';return;}
-  const tm={'arcana-arc-bridge':{icon:'⬡',cls:'bridge',label:'Arc Bridge'},'arcana-risk-on':{icon:'↑',cls:'on',label:'Risk-On Rebalance'},'arcana-risk-off':{icon:'⬇',cls:'off',label:'Risk-Off'}};
+  const tm={'arcana-arc-bridge':{icon:'⬡',cls:'bridge',label:'Arc Bridge → Arc'},'arcana-arc-retrieve':{icon:'⬢',cls:'bridge',label:'Arc Bridge ← Arc'},'arcana-risk-on':{icon:'↑',cls:'on',label:'Risk-On Rebalance'},'arcana-risk-off':{icon:'⬇',cls:'off',label:'Risk-Off'}};
   list.innerHTML=txHistory.slice().reverse().map(tx=>{
     const t=tm[tx.type]||{icon:'◎',cls:'',label:tx.type};
     const hash=tx.tx?tx.tx.slice(0,10)+'…'+tx.tx.slice(-6):null;

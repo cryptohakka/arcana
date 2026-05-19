@@ -337,23 +337,10 @@ function suppressRpcNoise() {
 // ─── TX History ───────────────────────────────────────────────────────────────
 const TX_HISTORY_FILE = path.join(__dirname, 'tx_history.json');
 
-function recordTx({ type, fromVault, toVault, asset, chainId, fromChainId, toChainId, valueUsd, txHash, txHash2, protocol }) {
+function recordTx(fields) {
   let history = [];
   try { history = JSON.parse(fs.readFileSync(TX_HISTORY_FILE, 'utf8')); } catch {}
-  history.unshift({
-    time: new Date().toISOString(),
-    type,
-    fromVault: fromVault || null,
-    toVault:   toVault   || null,
-    asset:     asset     || null,
-    chainId:   chainId   || null,
-    fromChainId: fromChainId || null,
-    toChainId:   toChainId   || null,
-    valueUsd:  valueUsd  || null,
-    txHash:    txHash    || null,
-    protocol:  protocol  || null,
-    txHash2:   txHash2   || null,
-  });
+  history.unshift({ time: new Date().toISOString(), ...fields });
   history = history.slice(0, 200);
   fs.writeFileSync(TX_HISTORY_FILE, JSON.stringify(history, null, 2));
 }
