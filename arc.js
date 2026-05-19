@@ -259,7 +259,141 @@ async function getGatewayBalance(address = null) {
   return balances;
 }
 
-module.exports = { depositToGateway, transferToArc, getGatewayBalance, arcTestnet, CHAINS };
+
+// ── Step 3: Transfer USDC from Arc Testnet → Base Sepolia ─────────────────────
+async function transferFromArc(amountUsdc = '1', recipientAddress = null) {
+  const account     = getAccount();
+  const srcCfg      = CHAINS.arcTestnet;
+  const dstCfg      = CHAINS.baseSepolia;
+  const recipient   = recipientAddress || account.address;
+  const transferVal = parseUnits(amountUsdc, 6);
+
+  // Step 1: Approve + Deposit on Arc Testnet
+  const arcPublicClient = createPublicClient({ chain: arcTestnet, transport: http(process.env.RPC_ARC) });
+  const arcWalletClient = createWalletClient({ account, chain: arcTestnet, transport: http(process.env.RPC_ARC) });
+
+  console.log(`[arc] Approving ${amountUsdc} USDC on Arc Testnet...`);
+  const approveArcTx = await arcWalletClient.writeContract({
+    address: srcCfg.usdc,
+    abi: erc20Abi,
+    functionName: 'approve',
+    args: [GATEWAY_WALLET, transferVal],
+  });
+  await arcPublicClient.waitForTransactionReceipt({ hash: approveArcTx });
+  console.log(`[arc] Approved on Arc: ${approveArcTx}`);
+
+  console.log(`[arc] Depositing ${amountUsdc} USDC to Gateway on Arc Testnet...`);
+  const depositArcTx = await arcWalletClient.writeContract({
+    address: GATEWAY_WALLET,
+    abi: gatewayWalletAbi,
+    functionName: 'deposit',
+    args: [srcCfg.usdc, transferVal],
+  });
+  await arcPublicClient.waitForTransactionReceipt({ hash: depositArcTx });
+  console.log(`[arc] Deposited on Arc: ${depositArcTx}`);
+
+  // Step 2: Build + sign burn intent
+  const burnIntent = {
+    maxBlockHeight: maxUint256,
+    maxFee:         MAX_FEE,
+    spec: {
+      version:              1,
+      sourceDomain:         srcCfg.domainId,
+      destinationDomain:    dstCfg.domainId,
+      sourceContract:       GATEWAY_WALLET,
+      destinationContract:  GATEWAY_MINTER,
+      sourceToken:          srcCfg.usdc,
+      destinationToken:     dstCfg.usdc,
+      sourceDepositor:      account.address,
+      destinationRecipient: recipient,
+      sourceSigner:         account.address,
+      destinationCaller:    zeroAddress,
+      value:                transferVal,
+      salt:                 '0x' + randomBytes(32).toString('hex'),
+      hookData:             '0x',
+    },
+  };
+
+  const EIP712Domain = [
+    { name: 'name',    type: 'string' },
+    { name: 'version', type: 'string' },
+  ];
+  const TransferSpec = [
+    { name: 'version',              type: 'uint32'  },
+    { name: 'sourceDomain',         type: 'uint32'  },
+    { name: 'destinationDomain',    type: 'uint32'  },
+    { name: 'sourceContract',       type: 'bytes32' },
+    { name: 'destinationContract',  type: 'bytes32' },
+    { name: 'sourceToken',          type: 'bytes32' },
+    { name: 'destinationToken',     type: 'bytes32' },
+    { name: 'sourceDepositor',      type: 'bytes32' },
+    { name: 'destinationRecipient', type: 'bytes32' },
+    { name: 'sourceSigner',         type: 'bytes32' },
+    { name: 'destinationCaller',    type: 'bytes32' },
+    { name: 'value',                type: 'uint256' },
+    { name: 'salt',                 type: 'bytes32' },
+    { name: 'hookData',             type: 'bytes'   },
+  ];
+  const BurnIntent = [
+    { name: 'maxBlockHeight', type: 'uint256'      },
+    { name: 'maxFee',         type: 'uint256'      },
+    { name: 'spec',           type: 'TransferSpec' },
+  ];
+
+  const typedData = {
+    types:       { EIP712Domain, TransferSpec, BurnIntent },
+    domain:      { name: 'GatewayWallet', version: '1' },
+    primaryType: 'BurnIntent',
+    message: {
+      ...burnIntent,
+      spec: {
+        ...burnIntent.spec,
+        sourceContract:       addressToBytes32(burnIntent.spec.sourceContract),
+        destinationContract:  addressToBytes32(burnIntent.spec.destinationContract),
+        sourceToken:          addressToBytes32(burnIntent.spec.sourceToken),
+        destinationToken:     addressToBytes32(burnIntent.spec.destinationToken),
+        sourceDepositor:      addressToBytes32(burnIntent.spec.sourceDepositor),
+        destinationRecipient: addressToBytes32(burnIntent.spec.destinationRecipient),
+        sourceSigner:         addressToBytes32(burnIntent.spec.sourceSigner),
+        destinationCaller:    addressToBytes32(burnIntent.spec.destinationCaller),
+      },
+    },
+  };
+
+  console.log(`[arc] Signing burn intent (${amountUsdc} USDC: Arc Testnet → Base Sepolia)...`);
+  const signature = await account.signTypedData(typedData);
+  const apiPayload = JSON.parse(stringify([{ burnIntent: typedData.message, signature }]));
+
+  // Step 3: Attestation
+  console.log('[arc] Requesting Gateway attestation (Arc → Base)...');
+  const res = await axios.post(
+    `${GATEWAY_API}/transfer`,
+    apiPayload,
+    { headers: { 'Content-Type': 'application/json' } }
+  ).catch(e => { throw new Error(JSON.stringify(e.response?.data)); });
+
+  const { attestation, signature: operatorSig } = res.data;
+  if (!attestation || !operatorSig) throw new Error('Missing attestation or signature from Gateway API');
+  console.log('[arc] Attestation received.');
+
+  // Step 4: Mint on Base Sepolia
+  console.log('[arc] Minting USDC on Base Sepolia...');
+  const { baseSepolia } = await import('viem/chains');
+  const basePublicClient = createPublicClient({ chain: baseSepolia, transport: http() });
+  const baseWalletClient = createWalletClient({ account, chain: baseSepolia, transport: http() });
+
+  const mintTx = await baseWalletClient.writeContract({
+    address: GATEWAY_MINTER,
+    abi: gatewayMinterAbi,
+    functionName: 'gatewayMint',
+    args: [attestation, operatorSig],
+  });
+  await basePublicClient.waitForTransactionReceipt({ hash: mintTx });
+  console.log(`[arc] Minted on Base Sepolia: ${mintTx}`);
+  return mintTx;
+}
+
+module.exports = { depositToGateway, transferToArc, transferFromArc, getGatewayBalance, arcTestnet, CHAINS };
 
 // Run directly for testing
 if (require.main === module) {
@@ -267,6 +401,7 @@ if (require.main === module) {
   if (cmd === 'deposit')  depositToGateway(process.argv[3] || '2').catch(console.error);
   if (cmd === 'transfer') transferToArc(process.argv[3] || '1').catch(console.error);
   if (cmd === 'balance')  getGatewayBalance().catch(console.error);
+  if (cmd === 'transfer-back') transferFromArc(process.argv[3] || '1').catch(console.error);
 }
 
 // ── Dev-Controlled Wallet operations ─────────────────────────────────────────
