@@ -189,6 +189,7 @@ For portfolio management context: determine if conditions favor RISK-ON (deploy 
 Be concise, 3-5 sentences.`;
 
   const architectReply = await infer([{ role: 'user', content: architectPrompt }], 600, 'Architect');
+  console.log('[Architect] ' + architectReply.slice(0, 300));
   await sendAsAgent('architect', `**Round 1 — Analysis**\n${architectReply}`);
 
   // ── Round 2: Auditor ──
@@ -205,6 +206,7 @@ Identify weaknesses in the analysis and conclude with your own view: is the mark
 Be critical and concise, 3-5 sentences.`;
 
   const auditorReply = await infer([{ role: 'user', content: auditorPrompt }], 600, 'Auditor');
+  console.log('[Auditor] ' + auditorReply.slice(0, 300));
   await sendAsAgent('auditor', `**Round 2 — Review**\n${auditorReply}`);
 
   // ── Round 3: Arbiter ──
@@ -235,6 +237,7 @@ Rules:
 - confidence reflects Auditor's criticism strength (stronger criticism = lower confidence)`;
 
   const arbiterRaw = await infer([{ role: 'user', content: arbiterPrompt }], 400, 'Arbiter');
+  console.log('[Arbiter] ' + arbiterRaw.slice(0, 200));
 
   // Parse JSON
   const match = arbiterRaw.match(/\{[\s\S]*\}/);
