@@ -68,10 +68,13 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
   try {
     const arcBalances = await getGatewayBalance();
     const arcAvailable = arcBalances.arcTestnet || 0;
-    if (arcAvailable >= 1) {
-      const retrieveAmount = Math.floor(arcAvailable).toString();
+    console.log(`[agent] gateway balance: arcTestnet=${arcAvailable} USDC`);
+    if (arcAvailable >= 0.5) {
+      const retrieveAmount = (Math.floor(arcAvailable * 10) / 10).toString();
+      console.log(`[agent] retrieving ${retrieveAmount} USDC ← Arc Testnet...`);
       await notify(`🌉 **Retrieving ${retrieveAmount} USDC ← Arc Testnet** (risk-on)`);
       const burnTx = await transferFromArc(retrieveAmount);
+      console.log(`[agent] retrieve tx: ${burnTx}`);
       await notify('✅ **Retrieved from Arc** — tx: `' + burnTx + '`');
       recordTx({ type: 'arcana-arc-retrieve', amount: retrieveAmount, regime: regime.regime, tx: burnTx });
       await new Promise(r => setTimeout(r, 5000));
@@ -147,19 +150,14 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
   console.log('[agent] risk_off: checking USYC position...');
 
   const positions = eoa ? [getPosition(eoa)].filter(Boolean) : loadPositions();
-  if (positions.length === 0) {
-    await notify(
-      `🔴 **Risk-Off** — No active positions to consolidate.\n` +
-      `BTC: $${regime.btc_price} | Phase: ${regime.phase} | Confidence: ${regime.confidence}\n` +
-      `Capital already safe in USYC / idle USDC.`
-    );
-    return;
-  }
-
+  console.log("[agent] active positions: " + positions.length);
   await notify(
-    `🔴 **Risk-Off Rebalance**\n` +
-    `BTC: $${regime.btc_price} | Phase: ${regime.phase} | Confidence: ${regime.confidence}\n` +
-    `→ Consolidating ${positions.length} position(s) into USYC stable yield\n` +
+    `🔴 **Risk-Off**
+` +
+    `BTC: $${regime.btc_price} | Phase: ${regime.phase} | Confidence: ${regime.confidence}
+` +
+    `→ ${positions.length > 0 ? "Consolidating " + positions.length + " position(s) into USYC" : "No vault positions — bridging idle USDC to Arc"}
+` +
     `  Reason: ${regime.reasoning}`
   );
 
@@ -178,10 +176,13 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
   try {
     const balances = await getGatewayBalance();
     const available = balances.baseSepolia || 0;
-    if (available >= 1) {
-      const bridgeAmount = Math.floor(available).toString();
+    console.log(`[agent] gateway balance: baseSepolia=${available} USDC`);
+    if (available >= 0.5) {
+      const bridgeAmount = (Math.floor(available * 10) / 10).toString();
+      console.log(`[agent] bridging ${bridgeAmount} USDC → Arc Testnet...`);
       await notify(`🌉 **Bridging ${bridgeAmount} USDC → Arc Testnet** (USYC parking)`);
       const mintTx = await transferToArc(bridgeAmount);
+      console.log(`[agent] bridge tx: ${mintTx}`);
       await notify('✅ **Parked on Arc** — tx: `' + mintTx + '`');
       recordTx({ type: 'arcana-arc-bridge', amount: bridgeAmount, regime: regime.regime, tx: mintTx });
     } else {
