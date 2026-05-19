@@ -6,7 +6,7 @@ const { detectRegime } = require('./regime');
 const { getVaults }    = require('./earn');
 const { rankVaults }   = require('./scorer');
 const { depositToVault } = require('./composer');
-const { transferToArc, getGatewayBalance } = require('./arc');
+const { transferToArc, transferFromArc, getGatewayBalance } = require('./arc');
 const {
   getProviderWithFallback,
   getUsdcAddress,
@@ -63,6 +63,23 @@ async function findBestVault(walletAddress, amountUsd) {
 async function executeRiskOn(regime, walletAddress, walletId, eoa) {
   console.log('[agent] risk_on: scanning best vault...');
   const fromChainId = USYC_CHAIN; // start from Base where USYC lives
+
+  // Retrieve parked USDC from Arc Testnet back to Base Sepolia
+  try {
+    const arcBalances = await getGatewayBalance();
+    const arcAvailable = arcBalances.arcTestnet || 0;
+    if (arcAvailable >= 1) {
+      const retrieveAmount = Math.floor(arcAvailable).toString();
+      await notify(`🌉 **Retrieving ${retrieveAmount} USDC ← Arc Testnet** (risk-on)`);
+      const burnTx = await transferFromArc(retrieveAmount);
+      await notify('✅ **Retrieved from Arc** — tx: `' + burnTx + '`');
+      recordTx({ type: 'arcana-arc-retrieve', amount: retrieveAmount, regime: regime.regime, tx: burnTx });
+      await new Promise(r => setTimeout(r, 5000));
+    }
+  } catch (e) {
+    await notify(`⚠️ **Arc retrieve failed** — ${e.message?.slice(0, 100)}`);
+    console.error('[agent] arc retrieve error:', e.message);
+  }
 
   const usdcBal = await getUsdcBalance(fromChainId, walletAddress);
   if (usdcBal < 1) {
