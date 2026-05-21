@@ -268,29 +268,24 @@ async function transferFromArc(amountUsdc = '1', recipientAddress = null) {
   const recipient   = recipientAddress || account.address;
   const transferVal = parseUnits(amountUsdc, 6);
 
-  // Step 1: Approve + Deposit on Arc Testnet
-  const arcPublicClient = createPublicClient({ chain: arcTestnet, transport: http(process.env.RPC_ARC) });
-  const arcWalletClient = createWalletClient({ account, chain: arcTestnet, transport: http(process.env.RPC_ARC) });
 
-  console.log(`[arc] Approving ${amountUsdc} USDC on Arc Testnet...`);
-  const approveArcTx = await arcWalletClient.writeContract({
-    address: srcCfg.usdc,
-    abi: erc20Abi,
-    functionName: 'approve',
-    args: [GATEWAY_WALLET, transferVal],
-  });
-  await arcPublicClient.waitForTransactionReceipt({ hash: approveArcTx });
-  console.log(`[arc] Approved on Arc: ${approveArcTx}`);
-
-  console.log(`[arc] Depositing ${amountUsdc} USDC to Gateway on Arc Testnet...`);
-  const depositArcTx = await arcWalletClient.writeContract({
-    address: GATEWAY_WALLET,
-    abi: gatewayWalletAbi,
-    functionName: 'deposit',
-    args: [srcCfg.usdc, transferVal],
-  });
-  await arcPublicClient.waitForTransactionReceipt({ hash: depositArcTx });
-  console.log(`[arc] Deposited on Arc: ${depositArcTx}`);
+  // Step 1: Check Gateway balance — skip deposit if already sufficient
+  const gatewayBals = await getGatewayBalance();
+  const gatewayArcBal = gatewayBals.arcTestnet || 0;
+  console.log(`[arc] Gateway Arc balance: ${gatewayArcBal} USDC`);
+  if (gatewayArcBal < parseFloat(amountUsdc)) {
+    const arcPublicClient2 = createPublicClient({ chain: arcTestnet, transport: http(process.env.RPC_ARC) });
+    const arcWalletClient2 = createWalletClient({ account, chain: arcTestnet, transport: http(process.env.RPC_ARC) });
+    console.log(`[arc] Topping up: approving ${amountUsdc} USDC on Arc Testnet...`);
+    const approveArcTx = await arcWalletClient2.writeContract({ address: srcCfg.usdc, abi: erc20Abi, functionName: "approve", args: [GATEWAY_WALLET, transferVal] });
+    await arcPublicClient2.waitForTransactionReceipt({ hash: approveArcTx });
+    console.log(`[arc] Approved on Arc: ${approveArcTx}`);
+    const depositArcTx = await arcWalletClient2.writeContract({ address: GATEWAY_WALLET, abi: gatewayWalletAbi, functionName: "deposit", args: [srcCfg.usdc, transferVal] });
+    await arcPublicClient2.waitForTransactionReceipt({ hash: depositArcTx });
+    console.log(`[arc] Deposited on Arc: ${depositArcTx}`);
+  } else {
+    console.log(`[arc] Gateway balance sufficient (${gatewayArcBal} USDC), skipping deposit.`);
+  }
 
   // Step 2: Build + sign burn intent
   const burnIntent = {

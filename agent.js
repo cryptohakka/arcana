@@ -71,6 +71,19 @@ async function findBestVault(walletAddress, amountUsd) {
 }
 
 // ── Risk-on: deploy into best yield vault ────────────────────────────────────
+async function getArcWalletBalance() {
+  const { createPublicClient, http, formatUnits, parseUnits } = require('viem');
+  const arcTestnetChain = {
+    id: 2911, name: 'Arc Testnet',
+    rpcUrls: { default: { http: [process.env.RPC_ARC] } },
+  };
+  const ARC_USDC = '0x3600000000000000000000000000000000000000';
+  const ERC20_ABI = [{ name: 'balanceOf', type: 'function', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' }];
+  const client = createPublicClient({ chain: arcTestnetChain, transport: http(process.env.RPC_ARC) });
+  const bal = await client.readContract({ address: ARC_USDC, abi: ERC20_ABI, functionName: 'balanceOf', args: [process.env.WALLET_ADDRESS] });
+  return parseFloat(formatUnits(bal, 6));
+}
+
 async function executeRiskOn(regime, walletAddress, walletId, eoa) {
   console.log('[agent] risk_on: scanning best vault...');
   const fromChainId = ARC_PAIR_CHAIN; // Arc testnet pairs with Base Sepolia
@@ -80,8 +93,11 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
     const arcBalances = await getGatewayBalance();
     const arcAvailable = arcBalances.arcTestnet || 0;
     console.log(`[agent] gateway balance: arcTestnet=${arcAvailable} USDC`);
-    if (arcAvailable >= 0.5) {
-      const retrieveAmount = (Math.floor(arcAvailable * 10) / 10).toString();
+    // Use actual Arc Testnet wallet balance, not Gateway API balance
+    const arcWalletBal = await getArcWalletBalance();
+    console.log(`[agent] arc wallet balance: ${arcWalletBal} USDC`);
+    if (arcWalletBal >= 0.5) {
+      const retrieveAmount = (Math.floor(arcWalletBal * 0.9 * 10) / 10).toString();
       console.log(`[agent] retrieving ${retrieveAmount} USDC ← Arc Testnet...`);
       await notify(`🌉 **Retrieving ${retrieveAmount} USDC ← Arc Testnet** (risk-on)`);
       const burnTx = await transferFromArc(retrieveAmount);

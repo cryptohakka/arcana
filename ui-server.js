@@ -43,7 +43,7 @@ app.get('/api/balances', async (req, res) => {
     res.json({ ...gateway, agentWallet: parseFloat(agentUsdc) });
   }
   catch(e) { res.status(500).json({ error: e.message }); }
-  finally { console.log = orig; }
+  finally { console.log = orig; console.error = origErr; }
 });
 
 // Inline runner
@@ -53,10 +53,16 @@ async function runInline(fn, label) {
   running = true;
   broadcast({ type:'start', script: label });
   const orig = console.log;
+  const origErr = console.error;
   console.log = (...a) => {
     const line = a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ');
     orig(line);
     broadcast({ type:'log', line });
+  };
+  console.error = (...a) => {
+    const line = a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ');
+    origErr(line);
+    broadcast({ type:'log', line: '⚠️ ' + line });
   };
   try {
     await fn();
