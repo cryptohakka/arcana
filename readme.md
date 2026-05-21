@@ -106,7 +106,7 @@ user_positions (id, eoa, type, amount, vault_address, chain, created_at)
 | Custody | Circle Developer-Controlled Wallets (DCW) |
 | Cross-chain | Circle Arc App Kit — Unified Balance |
 | Yield | LI.FI Earn API |
-| AI Agents | Google Gemini 2.0 Flash (via OpenRouter) |
+| AI Agents | Google Gemini 2.5 Flash Lite (via OpenRouter) |
 | Market Data | Hyperliquid public API |
 | Backend | Node.js, Express, better-sqlite3 |
 | Frontend | Vanilla JS, SSE, SVG |
@@ -187,7 +187,7 @@ sudo systemctl enable arcana-ui
 
 > Deployed on Arc Testnet. Connect MetaMask to try the full flow.
 
-**URL:** `http://38.49.214.145:5003` *(or configured domain)*
+**URL:** https://arcana.a2aflow.space
 
 1. Connect wallet → agent DCW is auto-created
 2. Send USDC to your deposit address on Arc Testnet
