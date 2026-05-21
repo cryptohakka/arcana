@@ -314,16 +314,13 @@ main{display:flex;flex-direction:column;overflow:hidden;}
         </div>
         <div class="ov-card">
           <div class="ov-hdr"><span class="ov-title">BTC Price · 8 Snapshots (24h)</span><span class="ov-sub" id="btcLatest">—</span></div>
-          <div class="ov-body" style="display:flex;align-items:flex-end;height:80px;padding-top:8px;">
-            <div class="spark" id="btcSpark"></div>
+          <div class="ov-body" style="padding-top:8px;">
+            <svg id="btcSpark" width="100%" height="60" style="display:block;"></svg>
+            <div id="btcSparkPrices" style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--text3);"></div>
           </div>
         </div>
       </div>
-
-      <!-- Bridge txs -->
-      <div class="ov-card">
-        <div class="ov-hdr"><span class="ov-title">Arc Bridge Transactions</span><span class="ov-sub" style="color:var(--accent);">Circle Gateway</span></div>
-        <div class="ov-body" id="arcTxList"><div style="font-family:var(--mono);font-size:10px;color:var(--text3);">No bridge txs yet</div></div>
+    </div>
       </div>
 
     </div>
@@ -538,19 +535,40 @@ function updateBalances(d){
 }
 
 function renderSpark(data){
-  const el=document.getElementById('btcSpark');
-  el.innerHTML='';
+  const svg=document.getElementById('btcSpark');
+  svg.innerHTML='';
+  const pricesEl=document.getElementById('btcSparkPrices');
+  if(pricesEl)pricesEl.innerHTML='';
   if(!data||!data.length)return;
   const vals=data.map(d=>d.btc_price||d.mark_price||0).filter(Boolean);
   if(!vals.length)return;
+  const W=svg.getBoundingClientRect().width||400,H=60,PAD=4;
   const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
-  vals.forEach(v=>{
-    const b=document.createElement('div');
-    b.className='spark-b';
-    b.style.height=Math.max(3,((v-min)/range)*36)+'px';
-    b.title='$'+v.toLocaleString();
-    el.appendChild(b);
+  const xs=vals.map((_,i)=>PAD+(i/(vals.length-1||1))*(W-PAD*2));
+  const ys=vals.map(v=>H-PAD-((v-min)/range)*(H-PAD*2));
+  const ns='http://www.w3.org/2000/svg';
+  const defs=document.createElementNS(ns,'defs');
+  const grad=document.createElementNS(ns,'linearGradient');
+  grad.setAttribute('id','sparkGrad');grad.setAttribute('x1','0');grad.setAttribute('y1','0');grad.setAttribute('x2','0');grad.setAttribute('y2','1');
+  const s1=document.createElementNS(ns,'stop');s1.setAttribute('offset','0%');s1.setAttribute('stop-color','var(--accent)');s1.setAttribute('stop-opacity','0.3');
+  const s2=document.createElementNS(ns,'stop');s2.setAttribute('offset','100%');s2.setAttribute('stop-color','var(--accent)');s2.setAttribute('stop-opacity','0');
+  grad.appendChild(s1);grad.appendChild(s2);defs.appendChild(grad);svg.appendChild(defs);
+  const area=document.createElementNS(ns,'polyline');
+  area.setAttribute('points',xs.map((x,i)=>x+','+ys[i]).join(' ')+' '+xs[xs.length-1]+','+H+' '+xs[0]+','+H);
+  area.setAttribute('fill','url(#sparkGrad)');area.setAttribute('stroke','none');
+  svg.appendChild(area);
+  const line=document.createElementNS(ns,'polyline');
+  line.setAttribute('points',xs.map((x,i)=>x+','+ys[i]).join(' '));
+  line.setAttribute('fill','none');line.setAttribute('stroke','var(--accent)');line.setAttribute('stroke-width','1.5');line.setAttribute('stroke-linejoin','round');
+  svg.appendChild(line);
+  vals.forEach((v,i)=>{
+    const c=document.createElementNS(ns,'circle');
+    c.setAttribute('cx',xs[i]);c.setAttribute('cy',ys[i]);c.setAttribute('r','2.5');
+    c.setAttribute('fill','var(--accent)');c.setAttribute('opacity','0.8');
+    const t=document.createElementNS(ns,'title');t.textContent='$'+v.toLocaleString();
+    c.appendChild(t);svg.appendChild(c);
   });
+  if(pricesEl)pricesEl.innerHTML=vals.map(v=>'<span>$'+Math.round(v).toLocaleString()+'</span>').join('');
 }
 
 async function fetchState(){
