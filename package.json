@@ -24,6 +24,8 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "@circle-fin/adapter-viem-v2": "^1.11.1",
+    "@circle-fin/app-kit": "^1.6.1",
     "@circle-fin/developer-controlled-wallets": "^10.3.1",
     "@x402/core": "^2.10.0",
     "@x402/evm": "^2.10.0",

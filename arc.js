@@ -93,8 +93,9 @@ async function depositToGateway(amountUsdc = '2') {
   const cfg      = CHAINS.baseSepolia;
   const amountWei = parseUnits(amountUsdc, 6);
 
-  const publicClient = createPublicClient({ chain: cfg.chain, transport: http() });
-  const walletClient = createWalletClient({ account, chain: cfg.chain, transport: http() });
+  const BASE_SEP_RPC = 'https://sepolia.base.org';
+  const publicClient = createPublicClient({ chain: cfg.chain, transport: http(BASE_SEP_RPC) });
+  const walletClient = createWalletClient({ account, chain: cfg.chain, transport: http(BASE_SEP_RPC) });
 
   // Check balance
   const bal = await publicClient.readContract({ address: cfg.usdc, abi: erc20Abi, functionName: 'balanceOf', args: [account.address] });
@@ -246,7 +247,7 @@ async function getGatewayBalance(address = null) {
         { domain: CHAINS.arcTestnet.domainId,  depositor },
       ],
     },
-    { headers: { 'Content-Type': 'application/json' } }
+    { headers: { 'Content-Type': 'application/json' }, timeout: 10000 }
   );
 
   const balances = {};
@@ -269,24 +270,14 @@ async function transferFromArc(amountUsdc = '1', recipientAddress = null) {
   const transferVal = parseUnits(amountUsdc, 6);
 
 
-  // Step 1: Check Gateway balance — skip deposit if already sufficient
+  // Step 1: Verify Gateway Arc balance (deposit from Arc wallet not supported)
   const gatewayBals = await getGatewayBalance();
   const gatewayArcBal = gatewayBals.arcTestnet || 0;
   console.log(`[arc] Gateway Arc balance: ${gatewayArcBal} USDC`);
   if (gatewayArcBal < parseFloat(amountUsdc)) {
-    const arcPublicClient2 = createPublicClient({ chain: arcTestnet, transport: http(process.env.RPC_ARC) });
-    const arcWalletClient2 = createWalletClient({ account, chain: arcTestnet, transport: http(process.env.RPC_ARC) });
-    console.log(`[arc] Topping up: approving ${amountUsdc} USDC on Arc Testnet...`);
-    const approveArcTx = await arcWalletClient2.writeContract({ address: srcCfg.usdc, abi: erc20Abi, functionName: "approve", args: [GATEWAY_WALLET, transferVal] });
-    await arcPublicClient2.waitForTransactionReceipt({ hash: approveArcTx });
-    console.log(`[arc] Approved on Arc: ${approveArcTx}`);
-    const depositArcTx = await arcWalletClient2.writeContract({ address: GATEWAY_WALLET, abi: gatewayWalletAbi, functionName: "deposit", args: [srcCfg.usdc, transferVal] });
-    await arcPublicClient2.waitForTransactionReceipt({ hash: depositArcTx });
-    console.log(`[arc] Deposited on Arc: ${depositArcTx}`);
-  } else {
-    console.log(`[arc] Gateway balance sufficient (${gatewayArcBal} USDC), skipping deposit.`);
+    throw new Error(`Insufficient Gateway Arc balance: ${gatewayArcBal} < ${amountUsdc}`);
   }
-
+  console.log(`[arc] Gateway balance sufficient, proceeding with burn intent.`);
   // Step 2: Build + sign burn intent
   const burnIntent = {
     maxBlockHeight: maxUint256,
@@ -430,3 +421,87 @@ async function sendFromAgentWallet(toAddress, amountUsdc, walletId) {
 }
 
 module.exports = Object.assign(module.exports, { getAgentWalletBalance, sendFromAgentWallet });
+
+// ── Unified Balance Transfer (Arc App Kit) ────────────────────────────────────
+const { AppKit } = require('@circle-fin/app-kit');
+const { createViemAdapterFromPrivateKey } = require('@circle-fin/adapter-viem-v2');
+
+function getAppKitAdapter() {
+  return createViemAdapterFromPrivateKey({ privateKey: process.env.PRIVATE_KEY });
+}
+
+async function unifiedTransferToArc(amountUsdc, recipientAddress = null) {
+  const kit = new AppKit();
+  const adapter = getAppKitAdapter();
+  const recipient = recipientAddress || process.env.WALLET_ADDRESS;
+  console.log(`[arc] Unified spend: Base_Sepolia → Arc_Testnet ${amountUsdc} USDC...`);
+  const result = await kit.unifiedBalance.spend({
+    amount: amountUsdc.toString(),
+    token: 'USDC',
+    from: [{ adapter }],
+    to: { adapter, chain: 'Arc_Testnet', recipientAddress: recipient },
+  });
+  console.log(`[arc] Minted on Arc Testnet: ${result.txHash}`);
+  // Wait for Arc Testnet wallet balance to reflect the mint
+  // Wait for Base Sepolia mint to confirm
+  await new Promise(r => setTimeout(r, 20000));
+}
+
+async function unifiedTransferFromArc(amountUsdc, recipientAddress = null) {
+  const kit = new AppKit();
+  const adapter = getAppKitAdapter();
+  const recipient = recipientAddress || process.env.WALLET_ADDRESS;
+  console.log(`[arc] Unified spend: Arc_Testnet → Base_Sepolia ${amountUsdc} USDC...`);
+  const result = await kit.unifiedBalance.spend({
+    amount: amountUsdc.toString(),
+    token: 'USDC',
+    from: [{ adapter }],
+    to: { adapter, chain: 'Base_Sepolia', recipientAddress: recipient },
+  });
+  console.log(`[arc] Minted on Base Sepolia: ${result.txHash}`);
+  return result.txHash;
+}
+
+async function getUnifiedBalance() {
+  const kit = new AppKit();
+  const adapter = getAppKitAdapter();
+  const result = await kit.unifiedBalance.getBalances({
+    sources: [{ adapter }],
+    networkType: 'testnet',
+    includePending: true,
+  });
+  const breakdown = result.breakdown?.[0]?.breakdown || [];
+  return {
+    baseSepolia: parseFloat(breakdown.find(b => b.chain === 'Base_Sepolia')?.confirmedBalance || '0'),
+    arcTestnet:  parseFloat(breakdown.find(b => b.chain === 'Arc_Testnet')?.confirmedBalance || '0'),
+  };
+}
+
+module.exports = { ...module.exports, unifiedTransferToArc, unifiedTransferFromArc, getUnifiedBalance };
+
+async function unifiedDeposit(amountUsdc, chain = 'Base_Sepolia') {
+  const kit = new AppKit();
+  const adapter = getAppKitAdapter();
+  console.log(`[arc] Unified deposit: ${chain} → Unified Balance ${amountUsdc} USDC...`);
+  const result = await kit.unifiedBalance.deposit({
+    from: { adapter, chain },
+    amount: amountUsdc.toString(),
+    token: 'USDC',
+  });
+  console.log(`[arc] Deposited to Unified Balance: ${result.txHash}`);
+  // Poll until confirmed
+  const target = parseFloat(amountUsdc) * 0.9; // 90% threshold
+  const start = Date.now();
+  while (Date.now() - start < 120000) {
+    const balances = await kit.unifiedBalance.getBalances({ sources: [{ adapter }], networkType: 'testnet', includePending: true });
+    const b = balances.breakdown?.[0]?.breakdown?.find(x => x.chain === chain);
+    const confirmed = parseFloat(b?.confirmedBalance || 0);
+    const pending   = parseFloat(b?.pendingBalance || 0);
+    console.log(`[arc] deposit status: confirmed=${confirmed} pending=${pending}`);
+    if (confirmed >= target) { console.log('[arc] Deposit confirmed.'); break; }
+    await new Promise(r => setTimeout(r, 5000));
+  }
+  return result.txHash;
+}
+
+module.exports = { ...module.exports, unifiedDeposit };

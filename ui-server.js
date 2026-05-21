@@ -43,7 +43,7 @@ app.get('/api/balances', async (req, res) => {
     res.json({ ...gateway, agentWallet: parseFloat(agentUsdc) });
   }
   catch(e) { res.status(500).json({ error: e.message }); }
-  finally { console.log = orig; console.error = origErr; }
+  finally { console.log = orig; }
 });
 
 // Inline runner

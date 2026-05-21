@@ -6,7 +6,7 @@ const { detectRegime } = require('./regime');
 const { getVaults }    = require('./earn');
 const { rankVaults }   = require('./scorer');
 const { depositToVault } = require('./composer');
-const { transferToArc, transferFromArc, getGatewayBalance } = require('./arc');
+const { unifiedTransferToArc, unifiedTransferFromArc, getUnifiedBalance, unifiedDeposit } = require('./arc');
 const {
   getProviderWithFallback,
   getUsdcAddress,
@@ -28,7 +28,7 @@ const WEBHOOK_SYSTEM = process.env.DISCORD_SYSTEM_WEBHOOK;
 
 // ── Discord notify ────────────────────────────────────────────────────────────
 async function notify(content) {
-  if (!WEBHOOK_SYSTEM) return;
+  console.log('[notify]', content.slice(0, 80));
   await axios.post(WEBHOOK_SYSTEM, { content, username: '🤖 System' })
     .catch(e => console.error('[notify]', e.message));
 }
@@ -90,17 +90,19 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
 
   // Retrieve parked USDC from Arc Testnet back to Base Sepolia
   try {
-    const arcBalances = await getGatewayBalance();
+    const arcBalances = await getUnifiedBalance();
     const arcAvailable = arcBalances.arcTestnet || 0;
     console.log(`[agent] gateway balance: arcTestnet=${arcAvailable} USDC`);
     // Use actual Arc Testnet wallet balance, not Gateway API balance
     const arcWalletBal = await getArcWalletBalance();
     console.log(`[agent] arc wallet balance: ${arcWalletBal} USDC`);
-    if (arcWalletBal >= 0.5) {
-      const retrieveAmount = (Math.floor(arcWalletBal * 0.9 * 10) / 10).toString();
+    const retrievable = arcWalletBal; // Arc Testnet wallet balance (deposit then spend)
+    if (retrievable >= 0.1) {
+      const retrieveAmount = (Math.floor(retrievable * 0.9 * 10) / 10).toString();
       console.log(`[agent] retrieving ${retrieveAmount} USDC ← Arc Testnet...`);
       await notify(`🌉 **Retrieving ${retrieveAmount} USDC ← Arc Testnet** (risk-on)`);
-      const burnTx = await transferFromArc(retrieveAmount);
+      await unifiedDeposit(retrieveAmount, 'Arc_Testnet');
+      const burnTx = await unifiedTransferFromArc(retrieveAmount);
       console.log(`[agent] retrieve tx: ${burnTx}`);
       await notify('✅ **Retrieved from Arc** — tx: `' + burnTx + '`');
       recordTx({ type: 'arcana-arc-retrieve', amount: retrieveAmount, regime: regime.regime, tx: burnTx });
@@ -188,14 +190,22 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
 
   // Bridge idle USDC to Arc Testnet (USYC stable yield)
   try {
-    const balances = await getGatewayBalance();
+    // Deposit wallet USDC into Unified Balance first
+    const walletBal = await getUsdcBalance(ARC_PAIR_CHAIN, walletAddress);
+    console.log(`[agent] wallet balance: baseSepolia=${walletBal} USDC`);
+    if (walletBal >= 1) {
+      const depositAmount = (Math.floor(walletBal * 0.9 * 10) / 10).toString();
+      console.log(`[agent] depositing ${depositAmount} USDC to Unified Balance...`);
+      await unifiedDeposit(depositAmount);
+    }
+    const balances = await getUnifiedBalance();
     const available = balances.baseSepolia || 0;
     console.log(`[agent] gateway balance: baseSepolia=${available} USDC`);
     if (available >= 0.5) {
       const bridgeAmount = (Math.floor(available * 10) / 10).toString();
       console.log(`[agent] bridging ${bridgeAmount} USDC → Arc Testnet...`);
       await notify(`🌉 **Bridging ${bridgeAmount} USDC → Arc Testnet** (USYC parking)`);
-      const mintTx = await transferToArc(bridgeAmount);
+      const mintTx = await unifiedTransferToArc(bridgeAmount);
       console.log(`[agent] bridge tx: ${mintTx}`);
       await notify('✅ **Parked on Arc** — tx: `' + mintTx + '`');
       recordTx({ type: 'arcana-arc-bridge', amount: bridgeAmount, regime: regime.regime, tx: mintTx });
