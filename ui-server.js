@@ -38,9 +38,21 @@ app.get('/api/tx-history', (req, res) => { try { res.json(JSON.parse(fs.readFile
 app.get('/api/balances', async (req, res) => {
   const orig = console.log; console.log = () => {};
   try {
-    const [gateway, agent] = await Promise.all([getGatewayBalance(), getAgentWalletBalance()]);
-    const agentUsdc = agent.find(t => t.token.symbol === 'USDC')?.amount || '0';
-    res.json({ ...gateway, agentWallet: parseFloat(agentUsdc) });
+    const { AppKit } = require('@circle-fin/app-kit');
+    const { createViemAdapterFromPrivateKey } = require('@circle-fin/adapter-viem-v2');
+    const kit = new AppKit();
+    const adapter = createViemAdapterFromPrivateKey({ privateKey: process.env.PRIVATE_KEY });
+    const [ub, agent] = await Promise.all([
+      kit.unifiedBalance.getBalances({ sources: [{ adapter }], networkType: 'testnet', includePending: true }),
+      getAgentWalletBalance()
+    ]);
+    const breakdown = ub.breakdown?.[0]?.breakdown || [];
+    const chains = breakdown.map(c => ({ chain: c.chain, balance: parseFloat(c.confirmedBalance || '0') }));
+    const agentUsdc = parseFloat(agent.find(t => t.token.symbol === 'USDC')?.amount || '0');
+    const total = parseFloat(ub.totalConfirmedBalance || '0');
+    const baseSepolia = chains.find(c => c.chain === 'Base_Sepolia')?.balance || 0;
+    const arcTestnet  = chains.find(c => c.chain === 'Arc_Testnet')?.balance || 0;
+    res.json({ chains, total, agentWallet: agentUsdc, baseSepolia, arcTestnet });
   }
   catch(e) { res.status(500).json({ error: e.message }); }
   finally { console.log = orig; }
@@ -186,10 +198,12 @@ app.post('/api/user/register', async (req, res) => {
 // Serve static files last
 app.use(express.static(path.join(__dirname, 'public')));
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log('[ui-server] :' + PORT);
   setTimeout(async () => {
     try { broadcast({ type:'regime', data: JSON.parse(fs.readFileSync(REGIME_PATH,'utf8')) }); } catch {}
-    try { const orig2 = console.log; console.log = ()=>{}; const b = await getGatewayBalance(); console.log = orig2; broadcast({ type:'balances', data:b }); } catch(e) {}
   }, 1000);
 });
+server.on('error', (e) => console.error('[server error]', e.message));
+process.on('uncaughtException', (e) => console.error('[uncaught]', e.message));
+process.on('unhandledRejection', (e) => console.error('[unhandled]', e));

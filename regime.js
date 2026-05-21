@@ -265,6 +265,8 @@ Rules:
     signal_score: signalScore,
     btc_price: btc.mark_price,
     atr_pct: btc.atr_pct,
+    funding_rate: btc.funding_rate,
+    oi_change: btc.deltas?.oi_change_pct_3h ?? null,
     updated_at: new Date().toISOString(),
   };
   fs.writeFileSync(REGIME_PATH, JSON.stringify(regime, null, 2));

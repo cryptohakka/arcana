@@ -32,11 +32,14 @@
   --mono:'JetBrains Mono',monospace;
   --sans:'Inter',sans-serif;
 }
+
+.regime-pill{display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:0.05em;color:var(--text2);transition:all 0.3s;}
+.regime-pill.risk_on{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
+.regime-pill.risk_off{border-color:var(--danger-border);color:var(--danger);background:var(--danger-dim);}
+.rp-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
 html,body{height:100%;font-family:var(--sans);background:var(--bg);color:var(--text);overflow:hidden;}
 body::before{content:'';position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(circle,rgba(77,159,255,0.04) 1px,transparent 1px);background-size:28px 28px;}
-.app{display:grid;grid-template-rows:auto auto 1fr;height:100vh;position:relative;z-index:1;}
-
-/* ── Top bar ── */
+.app{display:grid;grid-template-rows:auto 1fr;height:100vh;position:relative;z-index:1;}
 nav{display:flex;align-items:center;padding:0 24px;height:52px;background:var(--surface);border-bottom:1px solid var(--border);gap:24px;}
 .logo{font-family:var(--mono);font-size:13px;font-weight:500;letter-spacing:0.12em;color:var(--text);text-decoration:none;}
 .nav-div{width:1px;height:16px;background:var(--border2);}
@@ -48,29 +51,7 @@ nav{display:flex;align-items:center;padding:0 24px;height:52px;background:var(--
 .nav-btn{display:flex;align-items:center;gap:7px;padding:5px 13px;border-radius:6px;border:1px solid var(--border2);background:transparent;font-family:var(--mono);font-size:10px;font-weight:500;color:var(--text2);cursor:pointer;letter-spacing:0.04em;transition:all 0.15s;}
 .nav-btn:hover{border-color:var(--accent-border);color:var(--accent);background:var(--accent-dim);}
 .nav-btn.connected{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
-
-/* ── Status bar ── */
-.status-bar{display:flex;align-items:center;gap:0;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;height:44px;}
-.sb-item{display:flex;align-items:center;gap:8px;padding:0 20px;border-right:1px solid var(--border);height:100%;}
-.sb-item:first-child{padding-left:0;}
-.sb-item:last-child{border-right:none;}
-.sb-lbl{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);}
-.sb-val{font-family:var(--mono);font-size:12px;font-weight:500;color:var(--text);}
-.sb-val.ok{color:var(--ok);}
-.sb-val.danger{color:var(--danger);}
-.sb-val.accent{color:var(--accent);}
-.regime-pill{display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:20px;border:1px solid var(--border2);font-family:var(--mono);font-size:10px;font-weight:500;letter-spacing:0.05em;color:var(--text2);transition:all 0.3s;}
-.regime-pill.risk_on{border-color:var(--ok-border);color:var(--ok);background:var(--ok-dim);}
-.regime-pill.risk_off{border-color:var(--danger-border);color:var(--danger);background:var(--danger-dim);}
-.rp-dot{width:5px;height:5px;border-radius:50%;background:currentColor;}
-.conf-bar{display:flex;align-items:center;gap:7px;}
-.conf-track{width:72px;height:2px;background:var(--border2);border-radius:1px;}
-.conf-fill{height:100%;border-radius:1px;background:var(--accent);transition:width 0.6s ease;}
-.sb-spacer{flex:1;}
-.sb-item.right{border-right:none;border-left:1px solid var(--border);margin-left:auto;}
-
-/* ── Main ── */
-main{display:flex;flex-direction:column;overflow:hidden;}
+main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
 .tabs{display:flex;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;}
 .tab{padding:13px 14px;font-family:var(--mono);font-size:10px;letter-spacing:0.07em;text-transform:uppercase;color:var(--text3);cursor:pointer;border:none;background:none;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all 0.15s;}
 .tab:hover{color:var(--text2);}
@@ -79,8 +60,6 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .tab-r-txt{font-family:var(--mono);font-size:9px;color:var(--text3);}
 .panel{display:none;flex:1;overflow:hidden;flex-direction:column;}
 .panel.active{display:flex;}
-
-/* ── Overview ── */
 .ov-scroll{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:14px;}
 .ov-scroll::-webkit-scrollbar{width:3px;}
 .ov-scroll::-webkit-scrollbar-thumb{background:var(--border2);}
@@ -101,8 +80,6 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .ov-title{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text2);}
 .ov-sub{font-family:var(--mono);font-size:9px;color:var(--text3);}
 .ov-body{padding:13px 15px;}
-
-/* regime reasoning card */
 .reasoning-card{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:14px 16px;display:flex;align-items:flex-start;gap:14px;}
 .rc-bar-v{width:3px;border-radius:2px;align-self:stretch;flex-shrink:0;background:var(--border2);transition:background 0.4s;}
 .rc-bar-v.risk_on{background:var(--ok);}
@@ -110,8 +87,6 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .rc-content{flex:1;min-width:0;}
 .rc-phase{font-size:16px;font-weight:500;color:var(--text);margin-bottom:5px;}
 .rc-reason{font-size:11px;color:var(--text2);line-height:1.6;}
-
-/* balance */
 .ub-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;}
 .ub-row:not(:last-child){border-bottom:1px solid var(--border);}
 .ub-left{display:flex;align-items:center;gap:8px;}
@@ -121,29 +96,14 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .ub-val{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--text);}
 .ub-val.ok{color:var(--ok);}
 .ub-usdc{font-size:9px;color:var(--text3);margin-left:3px;}
-
-/* spark */
 .spark{display:flex;align-items:flex-end;gap:2px;height:40px;width:100%;}
 .spark-b{flex:1;border-radius:1px;background:rgba(77,159,255,0.25);min-height:2px;transition:background 0.2s;}
 .spark-b:hover{background:var(--accent);}
-
-/* bridge txs */
-.btx-item{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--border);}
-.btx-item:last-child{border-bottom:none;}
-.btx-icon{width:24px;height:24px;border-radius:4px;background:var(--accent-dim);border:1px solid var(--accent-border);display:flex;align-items:center;justify-content:center;font-size:10px;color:var(--accent);flex-shrink:0;}
-.btx-info{flex:1;min-width:0;}
-.btx-top{font-family:var(--mono);font-size:10px;color:var(--text);}
-.btx-bot{font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.btx-val{font-family:var(--mono);font-size:10px;font-weight:500;color:var(--ok);}
-
-/* deposit address */
 .deposit-box{background:var(--surface2);border:1px solid var(--accent-border);border-radius:6px;padding:11px 13px;margin-top:10px;}
 .deposit-lbl{font-family:var(--mono);font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:var(--text3);margin-bottom:5px;}
 .deposit-addr{font-family:var(--mono);font-size:10px;color:var(--accent);word-break:break-all;cursor:pointer;line-height:1.5;}
 .deposit-addr:hover{text-decoration:underline;}
 .deposit-hint{font-family:var(--mono);font-size:9px;color:var(--text3);margin-top:4px;}
-
-/* log */
 .log-wrap{flex:1;display:flex;flex-direction:column;overflow:hidden;}
 .log-bar{display:flex;align-items:center;gap:10px;padding:9px 24px;background:var(--surface);border-bottom:1px solid var(--border);}
 .log-dots{display:flex;gap:5px;}
@@ -161,8 +121,6 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .ll.warn{color:var(--warn);}
 .ll.accent{color:var(--accent);}
 .ll.dim{color:var(--text3);font-size:10px;}
-
-/* history */
 .hist-wrap{flex:1;overflow-y:auto;padding:20px 24px;}
 .hist-wrap::-webkit-scrollbar{width:3px;}
 .hist-wrap::-webkit-scrollbar-thumb{background:var(--border2);}
@@ -183,8 +141,6 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--text3);gap:8px;}
 .empty-icon{font-size:24px;opacity:0.2;}
 .empty-txt{font-family:var(--mono);font-size:10px;letter-spacing:0.06em;}
-
-/* modal */
 .modal-bg{display:none;position:fixed;inset:0;background:rgba(5,12,24,0.8);z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(2px);}
 .modal-bg.open{display:flex;}
 .modal{background:var(--surface);border:1px solid var(--border2);border-radius:9px;padding:22px;width:360px;}
@@ -197,8 +153,6 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .mb.ok-mb:hover{border-color:var(--ok);}
 .mb.danger-mb{border-color:var(--danger-border);color:var(--danger);background:var(--danger-dim);}
 .mb.danger-mb:hover{border-color:var(--danger);}
-
-/* toast */
 .toast{position:fixed;bottom:18px;right:18px;z-index:200;background:var(--surface2);border:1px solid var(--border2);border-radius:6px;padding:10px 14px;font-family:var(--mono);font-size:10px;color:var(--text);display:flex;align-items:center;gap:8px;transform:translateY(50px);opacity:0;transition:all 0.2s ease;max-width:300px;}
 .toast.show{transform:translateY(0);opacity:1;}
 .toast.ok{border-left:2px solid var(--ok);}
@@ -206,58 +160,32 @@ main{display:flex;flex-direction:column;overflow:hidden;}
 .toast.warn{border-left:2px solid var(--warn);}
 .spin{display:inline-block;width:9px;height:9px;border:1.5px solid var(--border2);border-top-color:var(--accent);border-radius:50%;animation:sp 0.6s linear infinite;vertical-align:middle;margin-right:5px;}
 @keyframes sp{to{transform:rotate(360deg);}}
+.col-2{display:grid;grid-template-columns:1fr 1fr;gap:12px;align-items:stretch;}
+.col-left,.col-right{display:flex;flex-direction:column;gap:8px;}
+@media(max-width:900px){.col-2{grid-template-columns:1fr;}}
 </style>
 </head>
 <body>
 <div class="app">
 
-<!-- Top nav -->
 <nav>
   <a class="logo" href="#">ARCANA</a>
   <div class="nav-div"></div>
   <span class="nav-sub">Adaptive Portfolio Manager · Arc Testnet</span>
-  <div class="nav-right">
+  <div class="nav-right" style="gap:14px;">
+    <div class="regime-pill" id="navRegime"><div class="rp-dot"></div><span id="navTxt">DETECTING</span></div>
+    <div style="display:flex;align-items:center;gap:6px;">
+      <span style="font-family:var(--mono);font-size:9px;letter-spacing:0.08em;color:var(--text3);">CONF</span>
+      <div style="width:56px;height:2px;background:var(--border2);border-radius:1px;"><div id="confFill" style="height:100%;border-radius:1px;background:var(--accent);width:0%;transition:width 0.6s ease;"></div></div>
+      <span style="font-family:var(--mono);font-size:11px;font-weight:500;color:var(--accent);" id="confNum">—</span>
+    </div>
     <div class="sys-dot" id="sysDot"></div>
     <button class="nav-btn" id="connectBtn" onclick="connectWallet()"><span id="connectLabel">Connect Wallet</span></button>
   </div>
 </nav>
 
-<!-- Status bar -->
-<div class="status-bar">
-  <div class="sb-item">
-    <div class="regime-pill" id="navRegime"><div class="rp-dot"></div><span id="navTxt">DETECTING</span></div>
-  </div>
-  <div class="sb-item">
-    <span class="sb-lbl">BTC</span>
-    <span class="sb-val" id="sbBtc">—</span>
-  </div>
-  <div class="sb-item">
-    <span class="sb-lbl">Confidence</span>
-    <div class="conf-bar">
-      <div class="conf-track"><div class="conf-fill" id="confFill" style="width:0%"></div></div>
-      <span class="sb-val accent" id="confNum">—</span>
-    </div>
-  </div>
-  <div class="sb-item">
-    <span class="sb-lbl">Phase</span>
-    <span class="sb-val" id="sbPhase">—</span>
-  </div>
-  <div class="sb-item">
-    <span class="sb-lbl">Signal</span>
-    <span class="sb-val" id="sbSig">—</span>
-  </div>
-  <div class="sb-item">
-    <span class="sb-lbl">Users</span>
-    <span class="sb-val accent" id="sbUsers">—</span>
-  </div>
-  <div class="sb-item">
-    <span class="sb-lbl">Next Run</span>
-    <span class="sb-val" id="countdown">15:00</span>
-  </div>
-</div>
 
-<!-- Main -->
-<main>
+<main style="height:calc(100vh - 52px);min-height:0;">
   <div class="tabs">
     <button class="tab active" onclick="switchTab('overview',this)">Overview</button>
     <button class="tab" onclick="switchTab('log',this)">Live Log</button>
@@ -265,67 +193,65 @@ main{display:flex;flex-direction:column;overflow:hidden;}
     <div class="tab-r"><span class="tab-r-txt">Interval 15 min · Arc Testnet</span></div>
   </div>
 
+  <!-- OVERVIEW -->
   <div class="panel active" id="panel-overview">
     <div class="ov-scroll">
-
-      <!-- Signals row -->
-      <div class="sig-row">
-        <div class="sig-c"><div class="sig-lbl">Funding Rate</div><div class="sig-val" id="sFR">—</div><div class="sig-sub" id="sFRs">loading</div></div>
-        <div class="sig-c"><div class="sig-lbl">Open Interest Δ</div><div class="sig-val danger" id="sOI">−5.2%</div><div class="sig-sub danger" id="sOIs">3h window</div></div>
-        <div class="sig-c"><div class="sig-lbl">Signal Score</div><div class="sig-val" id="sSig">—</div><div class="sig-sub" id="sSigs">scale −3 to +3</div></div>
-        <div class="sig-c"><div class="sig-lbl">Rebalance</div><div class="sig-val" id="sReb">—</div><div class="sig-sub" id="sRebs">awaiting</div></div>
-      </div>
-
-      <!-- Reasoning -->
-      <div class="reasoning-card">
-        <div class="rc-bar-v" id="rcBarV"></div>
-        <div class="rc-content">
-          <div class="rc-phase" id="rcPhase">Awaiting regime detection...</div>
-          <div class="rc-reason" id="rcReason" style="color:var(--text3);font-size:11px;">3-agent analysis running in background</div>
-        </div>
-      </div>
-
-      <!-- Balance + BTC -->
-      <div class="card-2">
-        <div class="ov-card">
-          <div class="ov-hdr">
-            <span class="ov-title">Unified Balance · Circle Gateway</span>
-            <span class="ov-sub" style="color:var(--accent);">App Kit</span>
-          </div>
-          <div class="ov-body">
-            <div class="ub-row">
-              <div class="ub-left"><div class="ub-dot" style="background:#627eea;"></div><span class="ub-chain">Base Sepolia</span></div>
-              <div><span class="ub-val" id="ubBase">—</span><span class="ub-usdc">USDC</span></div>
+      <div class="col-2">
+        <!-- LEFT: Portfolio -->
+        <div class="col-left">
+          <div class="ov-card">
+            <div class="ov-hdr"><span class="ov-title">Portfolio · Circle Gateway</span></div>
+            <div class="ov-body">
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ AGENT WALLET</div>
+              <div class="ub-row" style="border-bottom:1px solid var(--border);margin-bottom:6px;padding-bottom:6px;">
+                <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain" style="font-size:13px;font-weight:600;">Agent Wallet</span><span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">DCW</span></div>
+                <div><span class="ub-val" id="ubAgent">—</span><span class="ub-usdc">USDC</span></div>
+              </div>
+              <div id="depositSection"></div>
+              <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
+                <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ UNIFIED BALANCE · APP KIT</div>
+                <div id="ubChainList"></div>
+                <div class="ub-row" style="border-bottom:none;margin-top:4px;">
+                  <div class="ub-left"><div class="ub-dot" style="background:var(--ok);"></div><span class="ub-chain">Total</span></div>
+                  <div><span class="ub-val ok" id="ubTotal">—</span><span class="ub-usdc">USDC</span></div>
+                </div>
+              </div>
             </div>
-            <div class="ub-row">
-              <div class="ub-left"><div class="ub-dot" style="background:var(--accent);"></div><span class="ub-chain">Arc Testnet</span><span class="ub-badge">ACTIVE</span></div>
-              <div><span class="ub-val ok" id="ubArc">—</span><span class="ub-usdc">USDC</span></div>
-            </div>
-            <div class="ub-row">
-              <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain">Agent Wallet</span><span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">DCW</span></div>
-              <div><span class="ub-val" id="ubAgent">—</span><span class="ub-usdc">USDC</span></div>
-            </div>
-            <div class="ub-row" style="border-bottom:none;margin-top:4px;">
-              <div class="ub-left"><div class="ub-dot" style="background:var(--ok);"></div><span class="ub-chain">Total</span></div>
-              <div><span class="ub-val ok" id="ubTotal">—</span><span class="ub-usdc">USDC</span></div>
-            </div>
-            <div id="depositSection"></div>
           </div>
         </div>
-        <div class="ov-card">
-          <div class="ov-hdr"><span class="ov-title">BTC Price · 8 Snapshots (24h)</span><span class="ov-sub" id="btcLatest">—</span></div>
-          <div class="ov-body" style="padding-top:8px;">
-            <svg id="btcSpark" width="100%" height="60" style="display:block;"></svg>
-            <div id="btcSparkPrices" style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--text3);"></div>
+        <!-- RIGHT: Regime + Signals + BTC -->
+        <div class="col-right">
+          <div class="ov-card" style="position:relative;overflow:hidden;">
+            <div class="ov-body" style="padding:14px 16px;">
+              <div class="rc-bar-v" id="rcBarV" style="position:absolute;left:0;top:0;bottom:0;width:3px;"></div>
+              <div style="padding-left:10px;">
+                <div class="rc-phase" id="rcPhase" style="font-size:20px;font-weight:700;margin-bottom:6px;">Awaiting...</div>
+                <div class="rc-reason" id="rcReason" style="color:var(--text3);font-size:11px;line-height:1.5;">3-agent analysis running in background</div>
+              </div>
+            </div>
+          </div>
+          <div class="sig-row" style="grid-template-columns:1fr 1fr;">
+            <div class="sig-c"><div class="sig-lbl">Confidence</div><div class="sig-val" id="sbConfRight">—</div></div>
+            <div class="sig-c"><div class="sig-lbl">Rebalance</div><div class="sig-val" id="sReb">—</div><div class="sig-sub" id="sRebs">awaiting</div></div>
+          </div>
+          <div class="sig-row" style="grid-template-columns:1fr 1fr 1fr;">
+            <div class="sig-c"><div class="sig-lbl">Funding Rate</div><div class="sig-val" id="sFR">—</div><div class="sig-sub" id="sFRs">loading</div></div>
+            <div class="sig-c"><div class="sig-lbl">OI Δ</div><div class="sig-val danger" id="sOI">—</div><div class="sig-sub" id="sOIs">3h window</div></div>
+            <div class="sig-c"><div class="sig-lbl">Signal</div><div class="sig-val" id="sSig">—</div><div class="sig-sub" id="sSigs">−3 to +3</div></div>
+          </div>
+          <div class="ov-card">
+            <div class="ov-hdr"><span class="ov-title">BTC Price · 8 Snapshots (24h)</span><span class="ov-sub" id="btcLatest">—</span></div>
+            <div class="ov-body" style="padding-top:8px;">
+              <svg id="btcSpark" width="100%" height="120" style="display:block;"></svg>
+              <div id="btcSparkPrices" style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--text3);"></div>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-      </div>
-
     </div>
   </div>
 
+  <!-- LIVE LOG -->
   <div class="panel" id="panel-log">
     <div class="log-wrap">
       <div class="log-bar">
@@ -342,9 +268,11 @@ main{display:flex;flex-direction:column;overflow:hidden;}
     </div>
   </div>
 
+  <!-- TX HISTORY -->
   <div class="panel" id="panel-history">
     <div class="hist-wrap" id="txList"><div class="empty"><div class="empty-icon">◎</div><div class="empty-txt">Loading history...</div></div></div>
   </div>
+
 </main>
 </div>
 
@@ -476,6 +404,7 @@ function logClass(l){
 function setOnline(ok){document.getElementById('sysDot').className='sys-dot'+(ok?'':' off');}
 
 function updateRegime(d){
+  const cre=document.getElementById('sbConfRight');if(cre)cre.textContent=d.confidence?Math.round(d.confidence*100)+'%':'—';
   if(!d)return;
   const r=d.regime||'neutral';
   const navR=document.getElementById('navRegime');
@@ -489,17 +418,17 @@ function updateRegime(d){
   const pct=Math.round((d.confidence||0)*100);
   document.getElementById('confFill').style.width=pct+'%';
   document.getElementById('confNum').textContent=pct+'%';
-  document.getElementById('sbPhase').textContent=d.phase||'—';
+  const sbPh=document.getElementById('sbPhase');if(sbPh)sbPh.textContent=d.phase||'—';
   if(d.btc_price){
     const p='$'+Number(d.btc_price).toLocaleString();
-    document.getElementById('sbBtc').textContent=p;
+    const sbBtcEl=document.getElementById('sbBtc');if(sbBtcEl)sbBtcEl.textContent=p;
     document.getElementById('btcLatest').textContent=p;
   }
   const sig=d.signal_score;
   if(sig!==undefined){
     const cl=sig>0?'ok':sig<0?'danger':'';
-    document.getElementById('sbSig').textContent=(sig>0?'+':'')+sig;
-    document.getElementById('sbSig').className='sb-val '+cl;
+    const sbSg=document.getElementById('sbSig');if(sbSg){sbSg.textContent=(sig>0?'+':'')+sig;
+    if(sbSg)sbSg.className='sb-val '+cl;}
     const sSig=document.getElementById('sSig');
     sSig.textContent=(sig>0?'+':'')+sig;
     sSig.className='sig-val '+(sig>0?'ok':sig<0?'danger':'warn');
@@ -520,18 +449,34 @@ function updateRegime(d){
     document.getElementById('sRebs').textContent=reb?'action required':'hold';
     document.getElementById('sRebs').className='sig-sub '+(reb?'ok':'');
   }
+  const oi=d.oi_change;
+  if(oi!==undefined){
+    const oiEl=document.getElementById('sOI');
+    oiEl.textContent=(oi>0?'+':'')+oi.toFixed(1)+'%';
+    oiEl.className='sig-val '+(oi>0?'ok':oi<0?'danger':'');
+    document.getElementById('sOIs').textContent='3h window';
+    document.getElementById('sOIs').className='sig-sub '+(oi<0?'danger':'');
+  }
 }
 
 function updateBalances(d){
-  const base=(d.baseSepolia||0).toFixed(2);
-  const arc=(d.arcTestnet||0).toFixed(2);
-  const agent=(d.agentWallet||0).toFixed(2);
-  const total=((d.baseSepolia||0)+(d.arcTestnet||0)+(d.agentWallet||0)).toFixed(2);
-  document.getElementById('ubBase').textContent=base;
-  document.getElementById('ubArc').textContent=arc;
-  document.getElementById('ubTotal').textContent=total;
-  const el=document.getElementById('ubAgent');
-  if(el)el.textContent=agent;
+  const chainColors={'Base_Sepolia':'#627eea','Arc_Testnet':'var(--accent)','Ethereum_Sepolia':'#8c8c8c','Arbitrum_Sepolia':'#28a0f0','Optimism_Sepolia':'#ff0420','Polygon_Amoy_Testnet':'#8247e5','Avalanche_Fuji':'#e84142','Unichain_Sepolia':'#f50db4','Sonic_Testnet':'#00d4aa','World_Chain_Sepolia':'#00c2ff','Sei_Testnet':'#9d4edd','HyperEVM_Testnet':'#ff6b35'};
+  const chains=d.chains||[];
+  const list=document.getElementById('ubChainList');
+  if(list&&chains.length){
+    list.innerHTML=chains.map(c=>{
+      const hasbal=c.balance>0;
+      const isArc=c.chain==='Arc_Testnet';
+      const color=chainColors[c.chain]||'#666';
+      const label=c.chain.replace(/_/g,' ');
+      const valCls=hasbal?(isArc?'ok':''):'';
+      const badge=isArc?'<span class="ub-badge">ACTIVE</span>':'';
+      return `<div class="ub-row"><div class="ub-left"><div class="ub-dot" style="background:${color};"></div><span class="ub-chain">${label}</span>${badge}</div><div><span class="ub-val ${valCls}">${c.balance.toFixed(4)}</span><span class="ub-usdc">USDC</span></div></div>`;
+    }).join('');
+  }
+  const total=(d.total||0)+(d.agentWallet||0);
+  document.getElementById('ubTotal').textContent=total.toFixed(4);
+  const agentEl=document.getElementById('ubAgent');if(agentEl)agentEl.textContent=(d.agentWallet||0).toFixed(4);
 }
 
 function renderSpark(data){
@@ -542,10 +487,10 @@ function renderSpark(data){
   if(!data||!data.length)return;
   const vals=data.map(d=>d.btc_price||d.mark_price||0).filter(Boolean);
   if(!vals.length)return;
-  const W=svg.getBoundingClientRect().width||400,H=60,PAD=4;
-  const min=Math.min(...vals),max=Math.max(...vals),range=max-min||1;
+  const W=svg.parentElement?.getBoundingClientRect().width||svg.getBoundingClientRect().width||600,H=120,PAD=10;
+  const rawMin=Math.min(...vals),rawMax=Math.max(...vals),rawRange=rawMax-rawMin||1;
   const xs=vals.map((_,i)=>PAD+(i/(vals.length-1||1))*(W-PAD*2));
-  const ys=vals.map(v=>H-PAD-((v-min)/range)*(H-PAD*2));
+  const ys=vals.map(v=>PAD+(1-(v-rawMin)/rawRange)*(H-PAD*2));
   const ns='http://www.w3.org/2000/svg';
   const defs=document.createElementNS(ns,'defs');
   const grad=document.createElementNS(ns,'linearGradient');
@@ -574,21 +519,9 @@ function renderSpark(data){
 async function fetchState(){
   try{const r=await fetch(API+'/api/regime');if(r.ok)updateRegime(await r.json());}catch{}
   try{const r=await fetch(API+'/api/balances');if(r.ok)updateBalances(await r.json());}catch{}
-  try{const r=await fetch(API+'/api/snapshots');if(r.ok)renderSpark(await r.json());}catch{}
-  try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();renderArcTxList();}}catch{}
+  try{const r=await fetch(API+'/api/snapshots');if(r.ok){const sd=await r.json();requestAnimationFrame(()=>renderSpark(sd));}}catch{}
+  try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();}}catch{}
   fetchUserCount();
-}
-
-function renderArcTxList(){
-  const el=document.getElementById('arcTxList');
-  const arcTxs=txHistory.filter(t=>t.type==='arcana-arc-bridge'||t.type==='arcana-arc-retrieve').slice(-4);
-  if(!arcTxs.length){el.innerHTML='<div style="font-family:var(--mono);font-size:10px;color:var(--text3);">No bridge txs yet</div>';return;}
-  el.innerHTML=arcTxs.reverse().map(tx=>{
-    const isRetrieve=tx.type==='arcana-arc-retrieve';
-    const label=isRetrieve?`${tx.amount} USDC ← Arc Testnet`:`${tx.amount} USDC → Arc Testnet`;
-    const icon=isRetrieve?'⬢':'⬡';
-    return`<div class="btx-item"><div class="btx-icon">${icon}</div><div class="btx-info"><div class="btx-top">${label}</div><div class="btx-bot">${(tx.tx||'pending').slice(0,24)}…</div></div><div class="btx-val">${isRetrieve?'-':'+'}${tx.amount}</div></div>`;
-  }).join('');
 }
 
 async function loadHistory(){
@@ -627,14 +560,6 @@ setInterval(()=>{
 },1000);
 
 connectSSE();fetchState();setInterval(fetchState,120000);
-
-// Demo initial state
-setTimeout(()=>{
-  updateRegime({regime:'risk_off',phase:'range',confidence:0.65,reasoning:"Auditor's critique significantly diminishes the bullish conviction, pushing the regime towards risk-off due to a neutral funding rate",btc_price:76522,signal_score:0,rebalance:false,funding_rate:0.0012});
-  updateBalances({baseSepolia:0.99,arcTestnet:0,agentWallet:20});
-  renderSpark([{btc_price:78200},{btc_price:77800},{btc_price:77100},{btc_price:76900},{btc_price:77300},{btc_price:76800},{btc_price:76600},{btc_price:76522}]);
-  document.getElementById('sbUsers').textContent='2';
-},800);
 </script>
 </body>
 </html>
