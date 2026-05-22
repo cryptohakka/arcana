@@ -445,6 +445,7 @@ async function unifiedTransferToArc(amountUsdc, recipientAddress = null) {
   // Wait for Arc Testnet wallet balance to reflect the mint
   // Wait for Base Sepolia mint to confirm
   await new Promise(r => setTimeout(r, 20000));
+  return result.txHash;
 }
 
 async function unifiedTransferFromArc(amountUsdc, recipientAddress = null) {

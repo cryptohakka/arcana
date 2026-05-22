@@ -190,7 +190,7 @@ main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
     <button class="tab active" onclick="switchTab('overview',this)">Overview</button>
     <button class="tab" onclick="switchTab('log',this)">Live Log</button>
     <button class="tab" onclick="switchTab('history',this)">Tx History</button>
-    <div class="tab-r"><span class="tab-r-txt">Interval 15 min · Arc Testnet</span></div>
+    <div class="tab-r"><span class="tab-r-txt">Interval 1h · Arc Testnet</span></div>
   </div>
 
   <!-- OVERVIEW -->
@@ -240,7 +240,7 @@ main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
             <div class="sig-c"><div class="sig-lbl">Signal</div><div class="sig-val" id="sSig">—</div><div class="sig-sub" id="sSigs">−3 to +3</div></div>
           </div>
           <div class="ov-card">
-            <div class="ov-hdr"><span class="ov-title">BTC Price · 8 Snapshots (24h)</span><span class="ov-sub" id="btcLatest">—</span></div>
+            <div class="ov-hdr"><span class="ov-title">BTC Price · 24 Snapshots (24h)</span><span class="ov-sub" id="btcLatest">—</span></div>
             <div class="ov-body" style="padding-top:8px;">
               <svg id="btcSpark" width="100%" height="120" style="display:block;"></svg>
               <div id="btcSparkPrices" style="display:flex;justify-content:space-between;margin-top:4px;font-family:var(--mono);font-size:9px;color:var(--text3);"></div>
@@ -289,7 +289,7 @@ main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
 <div class="toast" id="toast"><span id="toastTxt">—</span></div>
 
 <script>
-const API='';let wallet=null,pendingAction=null,countdown=900,txHistory=[];
+const API='';let wallet=null,pendingAction=null,countdown=3600,txHistory=[];
 
 async function connectWallet(){
   if(wallet)return;
@@ -531,11 +531,12 @@ async function loadHistory(){
 function renderHistory(){
   const list=document.getElementById('txList');
   if(!txHistory.length){list.innerHTML='<div class="empty"><div class="empty-icon">◎</div><div class="empty-txt">No transactions yet</div></div>';return;}
-  const tm={'arcana-arc-bridge':{icon:'⬡',cls:'bridge',label:'Arc Bridge → Arc'},'arcana-arc-retrieve':{icon:'⬢',cls:'bridge',label:'Arc Bridge ← Arc'},'arcana-risk-on':{icon:'↑',cls:'on',label:'Risk-On Rebalance'},'arcana-risk-off':{icon:'⬇',cls:'off',label:'Risk-Off'}};
-  list.innerHTML=txHistory.slice().reverse().map(tx=>{
+  const tm={'arcana-arc-bridge':{icon:'⬡',cls:'bridge',label:'Base Sepolia → Arc Testnet'},'arcana-arc-retrieve':{icon:'⬢',cls:'bridge',label:'Arc Testnet → Base Sepolia'},'arcana-risk-on':{icon:'↑',cls:'on',label:'Risk-On Rebalance'},'arcana-risk-off':{icon:'⬇',cls:'off',label:'Risk-Off'}};
+  list.innerHTML=txHistory.slice().map(tx=>{
     const t=tm[tx.type]||{icon:'◎',cls:'',label:tx.type};
     const hash=tx.tx?tx.tx.slice(0,10)+'…'+tx.tx.slice(-6):null;
-    return`<div class="tx-card"><div class="tx-ico ${t.cls}">${t.icon}</div><div class="tx-body"><div class="tx-type">${t.label}</div><div class="tx-meta">${tx.regime||'—'} · ${tx.amount?tx.amount+' USDC':''}</div></div><div class="tx-right"><div class="tx-amt">${tx.amount?tx.amount+' USDC':'—'}</div><div class="tx-time">${(tx.time||'').slice(0,19).replace('T',' ')}</div>${hash?`<div class="tx-hash" onclick="window.open('https://explorer.testnet.arc-node.thecanteenapp.com/tx/${tx.tx}','_blank')">${hash}</div>`:''}</div></div>`;
+    const explorerUrl=tx.type==='arcana-arc-retrieve'?'https://sepolia.basescan.org/tx/'+tx.tx:'https://testnet.arcscan.app/tx/'+tx.tx;
+    return`<div class="tx-card"><div class="tx-ico ${t.cls}">${t.icon}</div><div class="tx-body"><div class="tx-type">${t.label}</div><div class="tx-meta">${tx.regime||'—'} · ${tx.amount?tx.amount+' USDC':''}</div></div><div class="tx-right"><div class="tx-amt">${tx.amount?tx.amount+' USDC':'—'}</div><div class="tx-time">${(tx.time||'').slice(0,19).replace('T',' ')}</div>${hash?'<div class="tx-hash" onclick="window.open(\'' + explorerUrl + '\',\'_blank\')">' + hash + '</div>':''}</div></div>`;
   }).join('');
 }
 
@@ -553,10 +554,10 @@ async function confirmAction(){closeModal();if(!pendingAction)return;}
 
 setInterval(()=>{
   countdown=Math.max(0,countdown-1);
-  const m=String(Math.floor(countdown/60)).padStart(2,'0');
-  const s=String(countdown%60).padStart(2,'0');
-  document.getElementById('countdown').textContent=m+':'+s;
-  if(countdown===0){countdown=900;fetchState();}
+  const h=String(Math.floor(countdown/3600)).padStart(2,'0');
+  const m=String(Math.floor((countdown%3600)/60)).padStart(2,'0');
+  document.getElementById('countdown').textContent=h+':'+m;
+  if(countdown===0){countdown=3600;fetchState();}
 },1000);
 
 connectSSE();fetchState();setInterval(fetchState,120000);

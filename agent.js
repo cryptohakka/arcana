@@ -105,7 +105,7 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
       const burnTx = await unifiedTransferFromArc(retrieveAmount);
       console.log(`[agent] retrieve tx: ${burnTx}`);
       await notify('✅ **Retrieved from Arc** — tx: `' + burnTx + '`');
-      recordTx({ type: 'arcana-arc-retrieve', amount: retrieveAmount, regime: regime.regime, tx: burnTx });
+      recordTx({ type: 'arcana-arc-retrieve', amount: retrieveAmount, regime: 'risk_on', tx: burnTx });
       await new Promise(r => setTimeout(r, 5000));
     }
   } catch (e) {
@@ -148,7 +148,7 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
     chainId: best.vault.chainId,
     valueUsd: usdcBal,
     apy:     best.apy,
-    regime:  regime.regime,
+    regime:  'risk_on',
   });
   await notify(
     `✅ **Risk-On: Vault Selected** (LI.FI Earn)
@@ -183,7 +183,7 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
       fromVault: pos.vaultName,
       chainId:   pos.chainId,
       valueUsd:  pos.valueUsd,
-      regime:    regime.regime,
+      regime:    'risk_off',
     });
     console.log(`[agent] would withdraw from ${pos.vaultName} ($${pos.valueUsd})`);
   }
@@ -208,7 +208,7 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
       const mintTx = await unifiedTransferToArc(bridgeAmount);
       console.log(`[agent] bridge tx: ${mintTx}`);
       await notify('✅ **Parked on Arc** — tx: `' + mintTx + '`');
-      recordTx({ type: 'arcana-arc-bridge', amount: bridgeAmount, regime: regime.regime, tx: mintTx });
+      recordTx({ type: 'arcana-arc-bridge', amount: bridgeAmount, regime: 'risk_off', tx: mintTx });
     } else {
       await notify(`ℹ️ Gateway balance low (${available} USDC), skipping Arc bridge`);
     }

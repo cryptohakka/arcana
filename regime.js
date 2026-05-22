@@ -7,7 +7,7 @@ const OPENROUTER_MODEL   = process.env.OPENROUTER_MODEL || 'google/gemini-2.5-fl
 const HL_URL             = 'https://api.hyperliquid.xyz/info';
 const SNAPSHOTS_PATH     = './snapshots.json';
 const REGIME_PATH        = './regime.json';
-const MAX_SNAPSHOTS      = 8; // 24h at 3h intervals
+const MAX_SNAPSHOTS      = 24; // 24h at 1h intervals
 
 const WEBHOOKS = {
   architect: process.env.DISCORD_ARCHITECT_WEBHOOK,
