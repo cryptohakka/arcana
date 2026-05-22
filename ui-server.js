@@ -39,11 +39,33 @@ app.get('/api/balances', async (req, res) => {
   const orig = console.log; console.log = () => {};
   try {
     const { AppKit } = require('@circle-fin/app-kit');
+    const { createCircleWalletsAdapter } = require('@circle-fin/adapter-circle-wallets');
     const { createViemAdapterFromPrivateKey } = require('@circle-fin/adapter-viem-v2');
     const kit = new AppKit();
-    const adapter = createViemAdapterFromPrivateKey({ privateKey: process.env.PRIVATE_KEY });
+
+    // ユーザーEOAが指定されてればCircle Walletアダプター、なければPRIVATE_KEY
+    const userEoa = req.query.address?.toLowerCase();
+    let adapter, walletAddress;
+    if (userEoa) {
+      const row = db.prepare('SELECT * FROM users WHERE eoa = ?').get(userEoa);
+      if (!row) return res.status(404).json({ error: 'wallet not found, register first' });
+      adapter = createCircleWalletsAdapter({
+        apiKey: process.env.CIRCLE_API_KEY,
+        entitySecret: process.env.CIRCLE_ENTITY_SECRET,
+        walletId: row.wallet_id,
+      });
+      walletAddress = row.wallet_address;
+    } else {
+      adapter = createViemAdapterFromPrivateKey({ privateKey: process.env.PRIVATE_KEY });
+      walletAddress = process.env.CIRCLE_WALLET_ADDRESS;
+    }
+
     const [ub, agent] = await Promise.all([
-      kit.unifiedBalance.getBalances({ sources: [{ adapter }], networkType: 'testnet', includePending: true }),
+      kit.unifiedBalance.getBalances({
+        sources: [{ adapter, ...(userEoa ? { address: walletAddress } : {}) }],
+        networkType: 'testnet',
+        includePending: true
+      }),
       getAgentWalletBalance()
     ]);
     const breakdown = ub.breakdown?.[0]?.breakdown || [];
@@ -52,7 +74,7 @@ app.get('/api/balances', async (req, res) => {
     const total = parseFloat(ub.totalConfirmedBalance || '0');
     const baseSepolia = chains.find(c => c.chain === 'Base_Sepolia')?.balance || 0;
     const arcTestnet  = chains.find(c => c.chain === 'Arc_Testnet')?.balance || 0;
-    res.json({ chains, total, agentWallet: agentUsdc, baseSepolia, arcTestnet });
+    res.json({ chains, total, agentWallet: agentUsdc, baseSepolia, arcTestnet, walletAddress });
   }
   catch(e) { res.status(500).json({ error: e.message }); }
   finally { console.log = orig; }

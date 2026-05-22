@@ -518,7 +518,7 @@ function renderSpark(data){
 
 async function fetchState(){
   try{const r=await fetch(API+'/api/regime');if(r.ok)updateRegime(await r.json());}catch{}
-  try{const r=await fetch(API+'/api/balances');if(r.ok)updateBalances(await r.json());}catch{}
+  try{const url=API+'/api/balances'+(wallet?'?address='+wallet:'');const r=await fetch(url);if(r.ok)updateBalances(await r.json());}catch{}
   try{const r=await fetch(API+'/api/snapshots');if(r.ok){const sd=await r.json();requestAnimationFrame(()=>renderSpark(sd));}}catch{}
   try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();}}catch{}
   fetchUserCount();
