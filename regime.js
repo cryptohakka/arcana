@@ -269,13 +269,17 @@ Rules:
     oi_change: btc.deltas?.oi_change_pct_3h ?? null,
     updated_at: new Date().toISOString(),
     council: (() => {
-      const clean = s => s.replace(/#{1,3}[^
-]*/g,'').replace(/\*\*/g,'').replace(/
-+/g,' ').trim();
+      const sentiment = s => {
+        const t = s.toLowerCase();
+        if(t.includes('bullish') || t.includes('risk-on') || t.includes('upward')) return 'bullish';
+        if(t.includes('bearish') || t.includes('risk-off') || t.includes('downward')) return 'bearish';
+        return 'neutral';
+      };
+      const clean = s => s.replace(/#{1,3}[^\n]*/g,'').replace(/\*\*/g,'').replace(/\n+/g,' ').trim();
       const first = s => (clean(s).match(/[^.!?]+[.!?]/)?.[0] || clean(s).slice(0, 100)).trim();
       return {
-        architect: first(architectReply),
-        auditor:   first(auditorReply),
+        architect: sentiment(architectReply) + ' — ' + first(architectReply),
+        auditor:   (auditorReply.toLowerCase().includes('agree') ? 'agrees' : 'challenges') + ' — ' + first(auditorReply),
         arbiter:   first(result.reasoning || arbiterRaw),
       };
     })(),
