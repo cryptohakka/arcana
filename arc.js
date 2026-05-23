@@ -471,9 +471,8 @@ async function unifiedTransferToArc(amountUsdc, recipientAddress = null, walletI
 
 async function unifiedTransferFromArc(amountUsdc, recipientAddress = null, walletId = null, walletAddress = null) {
   const kit = new AppKit();
-  // spendはviemアダプター（カスタムRPC）で実行、受取先をCircle Walletアドレスに
-  const { adapter } = getAppKitAdapter(null, null);
-  const { address } = getAppKitAdapter(walletId, walletAddress);
+  // ユーザーのCircle Walletアダプターを使用（walletId/walletAddressがあれば）
+  const { adapter, address } = getAppKitAdapter(walletId, walletAddress);
   const recipient = recipientAddress || address || process.env.WALLET_ADDRESS;
   console.log(`[arc] Unified spend: Arc_Testnet → Base_Sepolia ${amountUsdc} USDC...`);
   let result;
@@ -481,8 +480,8 @@ async function unifiedTransferFromArc(amountUsdc, recipientAddress = null, walle
     result = await kit.unifiedBalance.spend({
       amount: amountUsdc.toString(),
       token: 'USDC',
-      from: { adapter },
-      to: { adapter, chain: 'Base_Sepolia', recipientAddress: recipient },
+      from: { adapter, address },
+      to: { adapter, chain: 'Base_Sepolia', recipientAddress: recipient, address },
     });
   } catch(e) {
     // Mint failure後もtxHashが取れる場合がある

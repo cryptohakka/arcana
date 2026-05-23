@@ -150,6 +150,62 @@ app.post('/api/risk-off', (req, res) => {
   runInline(() => runForUsers(), 'risk-off');
 });
 
+// ── Withdraw ─────────────────────────────────────────────────────────────────
+app.post('/api/withdraw', async (req, res) => {
+  try {
+    const { eoa, amount } = req.body;
+    if (!eoa || !amount) return res.status(400).json({ error: 'eoa and amount required' });
+    const row = db.prepare('SELECT * FROM users WHERE eoa = ?').get(eoa.toLowerCase());
+    if (!row) return res.status(404).json({ error: 'wallet not found' });
+    const { createCircleWalletsAdapter } = require('@circle-fin/adapter-circle-wallets');
+    const { AppKit } = require('@circle-fin/app-kit');
+    const adapter = createCircleWalletsAdapter({
+      apiKey: process.env.CIRCLE_API_KEY,
+      entitySecret: process.env.CIRCLE_ENTITY_SECRET,
+    });
+    const kit = new AppKit();
+    // Unified残高を取得して実際の残高でspend
+    const { getUnifiedBalance } = require('./arc');
+    const ubBal = await getUnifiedBalance(row.wallet_id, row.wallet_address);
+    const arcBal = ubBal.arcTestnet || 0;
+    let unifiedTxHash = null;
+    if (arcBal >= 0.01) {
+      const spendAmt = (Math.floor((arcBal - 0.1) * 10) / 10).toFixed(1);
+      const result = await kit.unifiedBalance.spend({
+        amount: spendAmt,
+        token: 'USDC',
+        from: { adapter, address: row.wallet_address },
+        to: { adapter, chain: 'Arc_Testnet', recipientAddress: eoa, address: row.wallet_address },
+      });
+      unifiedTxHash = result.txHash;
+    }
+    // Circle Walletも同時に引き出し
+    const { initiateDeveloperControlledWalletsClient } = require('@circle-fin/developer-controlled-wallets');
+    const circleClient = initiateDeveloperControlledWalletsClient({
+      apiKey: process.env.CIRCLE_API_KEY,
+      entitySecret: process.env.CIRCLE_ENTITY_SECRET,
+    });
+    const balRes = await circleClient.getWalletTokenBalance({ id: row.wallet_id });
+    const circleBal = parseFloat(balRes.data?.tokenBalances?.find(t => t.token?.symbol === 'USDC')?.amount || '0');
+    let circleTxId = null;
+    if (circleBal >= 0.01) {
+      const tx = await circleClient.createTransaction({
+        walletId:           row.wallet_id,
+        tokenAddress:       '0x3600000000000000000000000000000000000000',
+        destinationAddress: eoa,
+        amounts:            [circleBal.toString()],
+        fee:                { type: 'level', config: { feeLevel: 'MEDIUM' } },
+        blockchain:         'ARC-TESTNET',
+      });
+      circleTxId = tx.data?.transaction?.id || tx.data?.id;
+    }
+    res.json({ ok: true, txHash: unifiedTxHash, circleTxId });
+  } catch(e) {
+    console.error('[withdraw]', e.message);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 // ── User Wallet Management ───────────────────────────────────────────────────
 const Database = require('better-sqlite3');
 const db = new Database(path.join(__dirname, 'users.db'));

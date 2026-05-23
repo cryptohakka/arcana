@@ -202,12 +202,22 @@ main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
           <div class="ov-card">
             <div class="ov-hdr"><span class="ov-title">Portfolio · Circle Gateway</span></div>
             <div class="ov-body">
-              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ CIRCLE WALLET</div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ CIRCLE WALLET · ARC TESTNET</div>
               <div class="ub-row" style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:6px;">
-                <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain" style="font-size:13px;font-weight:600;">Circle Wallet</span><span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">DCW</span></div>
+                <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain" style="font-size:13px;font-weight:600;">Circle Wallet</span><span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">Arc Testnet</span></div>
                 <div><span class="ub-val" id="ubCircle">—</span><span class="ub-usdc">USDC</span></div>
               </div>
               <div id="depositSection"></div>
+              <div id="withdrawSection" style="margin-top:8px;display:none;">
+                <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ WITHDRAW</div>
+                <div style="display:flex;gap:6px;align-items:center;">
+                  <button id="withdrawBtn" onclick="doWithdraw()"
+                    style="background:rgba(123,94,167,0.2);border:1px solid rgba(123,94,167,0.4);color:#a78bda;font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">
+                    Withdraw All →EOA
+                  </button>
+                </div>
+                <div id="withdrawStatus" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px;"></div>
+              </div>
               <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
                 <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ UNIFIED BALANCE · APP KIT</div>
                 <div id="ubChainList"></div>
@@ -316,7 +326,7 @@ async function registerUserWallet(eoa){
     const check=await fetch(API+'/api/user/'+eoa);
     const data=await check.json();
     if(data.exists){
-      showDepositAddress(data.walletAddress);
+      showDepositAddress(data.walletAddress, eoa);
       addLog('Agent wallet: '+data.walletAddress,'ok');
       fetchUserCount();
       fetchState();
@@ -329,7 +339,7 @@ async function registerUserWallet(eoa){
     const res=await fetch(API+'/api/user/register',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eoa,signature,message})});
     const result=await res.json();
     if(result.error)throw new Error(result.error);
-    showDepositAddress(result.walletAddress);
+    showDepositAddress(result.walletAddress, eoa);
     addLog((result.created?'✅ Agent wallet created: ':'✅ Agent wallet: ')+result.walletAddress,'ok');
     showToast(result.created?'Agent wallet created!':'Welcome back!','ok');
     fetchUserCount();
@@ -337,13 +347,48 @@ async function registerUserWallet(eoa){
   }catch(e){addLog('Wallet setup failed: '+e.message,'danger');}
 }
 
-function showDepositAddress(addr){
+function showDepositAddress(addr, eoa){
   const sec=document.getElementById('depositSection');
   sec.innerHTML=`<div class="deposit-box">
     <div class="deposit-lbl">Deposit Address · Arc Testnet</div>
     <div class="deposit-addr" onclick="navigator.clipboard.writeText('${addr}');showToast('Copied!','ok')">${addr}</div>
     <div class="deposit-hint">Send USDC here · Agent manages the rest</div>
   </div>`;
+  const ws=document.getElementById('withdrawSection');
+  if(ws)ws.style.display='block';
+  window._connectedEoa=eoa||addr;
+}
+async function doWithdraw(){
+  const eoa=window._connectedEoa;
+  const amt=parseFloat(document.getElementById('ubTotal')?.textContent)||0;
+  if(!eoa){showToast('Connect wallet first','warn');return;}
+  const btn=document.getElementById('withdrawBtn');
+  const status=document.getElementById('withdrawStatus');
+  btn.disabled=true;btn.textContent='Sending...';
+  status.style.color='var(--text3)';status.textContent='Processing withdrawal...';
+  try{
+    const r=await fetch(API+'/api/withdraw',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eoa,amount:amt})});
+    const d=await r.json();
+    if(d.ok){
+      status.style.color='var(--ok)';
+      const short=eoa.slice(0,6)+'…'+eoa.slice(-4);
+      let msg='✅ Withdrawn to '+short;
+      if(d.txHash) msg+='\n  Unified tx: '+d.txHash.slice(0,18)+'...';
+      if(d.circleTxId) msg+='\n  Circle tx: '+d.circleTxId.slice(0,18)+'...';
+      status.style.whiteSpace='pre';
+      status.textContent=msg;
+      showToast('Withdrawn to '+short,'ok');
+      setTimeout(()=>fetchBalances(eoa),5000);
+    }else{
+      status.style.color='var(--danger)';
+      status.textContent='❌ '+d.error;
+    }
+  }catch(e){
+    status.style.color='var(--danger)';
+    status.textContent='❌ '+e.message;
+  }finally{
+    btn.disabled=false;btn.textContent='Withdraw All →EOA';
+  }
 }
 
 async function fetchUserCount(){
