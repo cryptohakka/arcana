@@ -43,6 +43,7 @@ function broadcast(obj, eoa = null) {
     clients.forEach(conns => conns.forEach(c => c.write('data: ' + JSON.stringify(obj) + '\n\n')));
   }
 }
+global._broadcast = broadcast;
 app.get('/events', (req, res) => {
   res.set({ 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', 'Connection':'keep-alive' });
   res.flushHeaders();
