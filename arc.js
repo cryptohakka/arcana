@@ -523,14 +523,8 @@ module.exports = { ...module.exports, unifiedTransferToArc, unifiedTransferFromA
 
 async function unifiedDeposit(amountUsdc, chain = 'Base_Sepolia', walletId = null, walletAddress = null) {
   const kit = new AppKit();
-  // Base SepoliaはviemアダプターでEOAが署名、Arc TestnetはCircle Walletアダプター
-  let adapter, address;
-  if (chain === 'Base_Sepolia') {
-    ({ adapter } = getAppKitAdapter(null, null)); // viemアダプター
-    address = null;
-  } else {
-    ({ adapter, address } = getAppKitAdapter(walletId, walletAddress));
-  }
+  // 両chainともCircle Walletアダプターで署名（Base SepoliaもCircle Walletが保持）
+  const { adapter, address } = getAppKitAdapter(walletId, walletAddress);
   console.log(`[arc] Unified deposit: ${chain} → Unified Balance ${amountUsdc} USDC...`);
   const result = await kit.unifiedBalance.deposit({
     from: { adapter, chain, ...(address ? { address } : {}) },
@@ -539,17 +533,20 @@ async function unifiedDeposit(amountUsdc, chain = 'Base_Sepolia', walletId = nul
   });
   console.log(`[arc] Deposited to Unified Balance: ${result.txHash}`);
   // Poll via Gateway API directly (faster than AppKit SDK)
+  const pollDomain = chain === 'Arc_Testnet' ? 26 : 6;
+  const pollAddress = address || (await (async () => { const { privateKeyToAccount } = require('viem/accounts'); return privateKeyToAccount(process.env.PRIVATE_KEY).address; })());
   const target = parseFloat(amountUsdc) * 0.9;
   const start = Date.now();
   while (Date.now() - start < 120000) {
     const res = await fetch('https://gateway-api-testnet.circle.com/v1/balances', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: 'USDC', sources: [{ domain: 26, depositor: address }] }),
+      body: JSON.stringify({ token: 'USDC', sources: [{ domain: pollDomain, depositor: pollAddress }] }),
     });
     const json = await res.json();
     const confirmed = parseFloat(json.balances?.[0]?.balance || 0);
     const pending = parseFloat(json.balances?.[0]?.pendingBatch || 0);
+    console.log(`[arc] poll domain=${pollDomain} depositor=${pollAddress?.slice(0,10)}...`);
     console.log(`[arc] deposit status: confirmed=${confirmed} pending=${pending}`);
     if (confirmed >= target) { console.log('[arc] Deposit confirmed.'); break; }
     await new Promise(r => setTimeout(r, 3000));

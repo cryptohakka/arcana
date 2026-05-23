@@ -196,36 +196,60 @@ main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
   <!-- OVERVIEW -->
   <div class="panel active" id="panel-overview">
     <div class="ov-scroll">
-      <div class="col-2">
-        <!-- LEFT: Portfolio -->
+      <div class="col-2" style="width:100%;">
+        <!-- LEFT: Portfolio debank style -->
         <div class="col-left">
           <div class="ov-card">
-            <div class="ov-hdr"><span class="ov-title">Portfolio · Circle Gateway</span></div>
-            <div class="ov-body">
-              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ CIRCLE WALLET · ARC TESTNET</div>
-              <div class="ub-row" style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:6px;">
-                <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain" style="font-size:13px;font-weight:600;">Circle Wallet</span><span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">Arc Testnet</span></div>
-                <div><span class="ub-val" id="ubCircle">—</span><span class="ub-usdc">USDC</span></div>
-              </div>
-              <div id="depositSection"></div>
-              <div id="withdrawSection" style="margin-top:8px;display:none;">
-                <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ WITHDRAW</div>
-                <div style="display:flex;gap:6px;align-items:center;">
-                  <button id="withdrawBtn" onclick="doWithdraw()"
-                    style="background:rgba(123,94,167,0.2);border:1px solid rgba(123,94,167,0.4);color:#a78bda;font-family:var(--mono);font-size:11px;padding:5px 10px;border-radius:6px;cursor:pointer;white-space:nowrap;">
-                    Withdraw All →EOA
-                  </button>
+            <div class="ov-hdr">
+              <span class="ov-title">Portfolio</span>
+              <span style="font-family:var(--mono);font-size:18px;font-weight:700;color:var(--text1);" id="portfolioTotal">$—</span>
+            </div>
+            <div class="ov-body" style="padding:0;">
+
+              <!-- Circle Wallet -->
+              <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <div class="ub-dot" style="background:#7b5ea7;"></div>
+                    <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);">Circle Wallet</span>
+                    <span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">Arc Testnet</span>
+                  </div>
+                  <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--text1);"><span id="ubCircle">—</span><span style="color:var(--text3);font-size:9px;margin-left:3px;">USDC</span></span>
                 </div>
-                <div id="withdrawStatus" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px;"></div>
+                <div id="depositSection"></div>
+                <div id="withdrawSection" style="display:none;margin-top:6px;">
+                  <button id="withdrawBtn" onclick="doWithdraw()" style="background:rgba(123,94,167,0.2);border:1px solid rgba(123,94,167,0.4);color:#a78bda;font-family:var(--mono);font-size:10px;padding:4px 10px;border-radius:4px;cursor:pointer;">Withdraw All →EOA</button>
+                  <div id="withdrawStatus" style="font-family:var(--mono);font-size:10px;color:var(--text3);margin-top:4px;"></div>
+                </div>
               </div>
-              <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
-                <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ UNIFIED BALANCE · APP KIT</div>
+
+              <!-- Unified Balance -->
+              <div style="padding:10px 14px;border-bottom:1px solid var(--border);">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <div class="ub-dot" style="background:var(--ok);"></div>
+                    <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);">Unified Balance</span>
+                    <span class="ub-badge">App Kit</span>
+                  </div>
+                  <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ok);"><span id="ubTotal">—</span><span style="color:var(--text3);font-size:9px;margin-left:3px;">USDC</span></span>
+                </div>
                 <div id="ubChainList"></div>
-                <div class="ub-row" style="border-bottom:none;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
-                  <div class="ub-left"><div class="ub-dot" style="background:var(--ok);"></div><span class="ub-chain">Total</span></div>
-                  <div><span class="ub-val ok" id="ubTotal">—</span><span class="ub-usdc">USDC</span></div>
+              </div>
+
+              <!-- Vault -->
+              <div style="padding:10px 14px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+                  <div style="display:flex;align-items:center;gap:6px;">
+                    <div class="ub-dot" style="background:#facc15;"></div>
+                    <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text2);">Vault</span>
+                  </div>
+                  <span style="font-family:var(--mono);font-size:13px;font-weight:600;color:#facc15;" id="vaultTotal">$—</span>
+                </div>
+                <div id="vaultPosition">
+                  <div style="color:var(--text3);font-family:var(--mono);font-size:11px;text-align:center;padding:8px;">No active position</div>
                 </div>
               </div>
+
             </div>
           </div>
         </div>
@@ -516,18 +540,38 @@ function updateBalances(d){
   const chains=d.chains||[];
   const list=document.getElementById('ubChainList');
   if(list&&chains.length){
-    list.innerHTML=chains.map(c=>{
-      const hasbal=c.balance>0;
-      const isArc=c.chain==='Arc_Testnet';
-      const color=chainColors[c.chain]||'#666';
-      const label=c.chain.replace(/_/g,' ');
-      const valCls=hasbal?(isArc?'ok':''):'';
-      const badge=isArc?'<span class="ub-badge">ACTIVE</span>':'';
-      return `<div class="ub-row"><div class="ub-left"><div class="ub-dot" style="background:${color};"></div><span class="ub-chain">${label}</span>${badge}</div><div><span class="ub-val ${valCls}">${c.balance.toFixed(4)}</span><span class="ub-usdc">USDC</span></div></div>`;
-    }).join('');
+    window._allChains = chains;
+    window._chainColors = chainColors;
+    renderChainList(false);
   }
   const circleEl=document.getElementById('ubCircle');if(circleEl)circleEl.textContent=(d.circleWallet||0).toFixed(4);
   document.getElementById('ubTotal').textContent=(d.total||0).toFixed(4);
+}
+
+function renderChainList(showAll){
+  const chains = window._allChains||[];
+  const chainColors = window._chainColors||{};
+  const list = document.getElementById('ubChainList');
+  if(!list) return;
+  const active = chains.filter(c=>c.balance>0);
+  const display = showAll ? chains : chains;
+  const html = '<div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-bottom:4px;">'+display.map(ch=>{
+    const isArc=ch.chain==='Arc_Testnet';
+    const color=chainColors[ch.chain]||'#666';
+    const label=ch.chain.replace(/_/g,' ');
+    const valColor=isArc?'var(--ok)':ch.balance>0?'var(--text1)':'var(--text3)';
+    return `<div style="display:flex;align-items:center;justify-content:space-between;padding:5px 8px;background:rgba(255,255,255,0.02);border:1px solid var(--border);border-radius:5px;">
+      <div style="display:flex;align-items:center;gap:5px;min-width:0;">
+        <div style="width:6px;height:6px;border-radius:50%;background:${color};flex-shrink:0;"></div>
+        <span style="font-family:var(--mono);font-size:9px;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${label}</span>
+      </div>
+      <span style="font-family:var(--mono);font-size:10px;font-weight:600;color:${valColor};margin-left:4px;flex-shrink:0;">${ch.balance.toFixed(2)}</span>
+    </div>`;
+  }).join('')+'</div>';
+  const toggleBtn = chains.length > display.length || showAll
+    ? `<button onclick="renderChainList(${!showAll})" style="font-family:var(--mono);font-size:9px;color:var(--text3);background:none;border:none;cursor:pointer;padding:2px 0;">${showAll?'▲ Show less':'▼ Show all '+chains.length+' chains'}</button>`
+    : '';
+  list.innerHTML = html + toggleBtn;
 }
 
 function renderSpark(data){
@@ -573,7 +617,45 @@ async function fetchState(){
   try{const r=await fetch(API+'/api/snapshots');if(r.ok){const sd=await r.json();requestAnimationFrame(()=>renderSpark(sd));}}catch{}
   try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();}}catch{}
   fetchUserCount();
+  if(wallet){try{const r=await fetch(API+'/api/positions?eoa='+wallet);if(r.ok)renderVaultPosition(await r.json());}catch{}}
 }
+
+function renderVaultPosition(positions){
+  const el = document.getElementById('vaultPosition');
+  const totalEl = document.getElementById('vaultTotal');
+  if(!el) return;
+  if(!positions || positions.length === 0){
+    el.innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:11px;text-align:center;padding:8px;">No active position</div>';
+    if(totalEl) totalEl.textContent = '$0.00';
+    updatePortfolioTotal();
+    return;
+  }
+  const raw = positions[0];
+  const p = {
+    vaultName: raw.vaultName || raw.vault_name,
+    protocol:  raw.protocol,
+    chainId:   raw.chainId || raw.chain_id,
+    valueUsd:  raw.valueUsd || raw.value_usd,
+    apy:       raw.apy,
+    vaultAddress: raw.vaultAddress || raw.vault_address,
+  };
+  const chainNames = {8453:'Base',84532:'Base Sepolia',1:'Ethereum',42161:'Arbitrum',10:'Optimism'};
+  const chainName = chainNames[p.chainId] || 'Chain '+p.chainId;
+  const explorerBase = p.chainId === 84532 ? 'https://sepolia.basescan.org/address/' : 'https://basescan.org/address/';
+  const val = parseFloat(p.valueUsd||0);
+  if(totalEl) totalEl.textContent = '$'+val.toFixed(2);
+  el.innerHTML = `<div style="background:rgba(250,204,21,0.04);border:1px solid rgba(250,204,21,0.2);border-radius:6px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center;"><div><div style="font-family:var(--mono);font-size:13px;font-weight:700;color:var(--text1);">${p.vaultName||'USDC'}</div><div style="display:flex;gap:4px;margin-top:4px;"><span style="font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(123,94,167,0.2);border:1px solid rgba(123,94,167,0.4);color:#a78bda;">${p.protocol||'—'}</span><span style="font-family:var(--mono);font-size:9px;padding:1px 6px;border-radius:3px;background:rgba(255,255,255,0.05);border:1px solid var(--border);color:var(--text3);">${chainName}</span></div></div><div style="text-align:right;"><div style="font-family:var(--mono);font-size:14px;font-weight:700;color:#facc15;">${p.apy ? p.apy.toFixed(2)+'%' : '—'} APY</div>${p.vaultAddress ? `<a href="${explorerBase}${p.vaultAddress}" target="_blank" style="font-family:var(--mono);font-size:9px;color:var(--text3);text-decoration:none;opacity:0.6;">${p.vaultAddress.slice(0,10)}...</a>` : ''}</div></div>`;
+  updatePortfolioTotal();
+}
+
+function updatePortfolioTotal(){
+  const circle = parseFloat(document.getElementById('ubCircle')?.textContent)||0;
+  const unified = parseFloat(document.getElementById('ubTotal')?.textContent)||0;
+  const vault = parseFloat((document.getElementById('vaultTotal')?.textContent||'').replace('$',''))||0;
+  const el = document.getElementById('portfolioTotal');
+  if(el) el.textContent = '$'+(circle+unified+vault).toFixed(2);
+}
+
 
 async function loadHistory(){
   try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();renderHistory();}}catch{renderHistory();}

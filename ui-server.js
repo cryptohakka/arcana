@@ -191,6 +191,22 @@ app.post('/api/risk-off', (req, res) => {
   runInline(() => runForUsers(), 'risk-off', eoa || null);
 });
 
+// ── Positions ────────────────────────────────────────────────────────────────
+app.get('/api/positions', (req, res) => {
+  const eoa = req.query.eoa?.toLowerCase();
+  const { getAllUsers, getPosition } = require('./agent');
+  if (eoa) {
+    const pos = getPosition(eoa);
+    return res.json(pos ? [pos] : []);
+  }
+  const users = getAllUsers();
+  const positions = users.map(u => {
+    const pos = getPosition(u.eoa);
+    return pos ? { ...pos, eoa: u.eoa } : null;
+  }).filter(Boolean);
+  res.json(positions);
+});
+
 // ── User Count ───────────────────────────────────────────────────────────────
 app.get('/api/users', (req, res) => {
   try {
