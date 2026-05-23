@@ -559,7 +559,7 @@ function renderSpark(data){
     const t=document.createElementNS(ns,'title');t.textContent='$'+v.toLocaleString();
     c.appendChild(t);svg.appendChild(c);
   });
-  if(pricesEl)pricesEl.innerHTML=vals.map(v=>'<span>$'+Math.round(v).toLocaleString()+'</span>').join('');
+  if(pricesEl){const n=8;const shown=Array.from({length:n},(_,i)=>vals[Math.round(i*(vals.length-1)/(n-1))]);pricesEl.innerHTML=shown.map(v=>'<span>$'+Math.round(v).toLocaleString()+'</span>').join('');}
 }
 
 async function fetchState(){

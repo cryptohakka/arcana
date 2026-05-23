@@ -29,6 +29,10 @@ const WEBHOOK_SYSTEM = process.env.DISCORD_SYSTEM_WEBHOOK;
 // ── Discord notify ────────────────────────────────────────────────────────────
 async function notify(content) {
   console.log('[notify]', content.slice(0, 80));
+  fetch('http://localhost:'+(process.env.ARCANA_PORT||5003)+'/internal/log', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ line: content })
+  }).catch(()=>{});
   await axios.post(WEBHOOK_SYSTEM, { content, username: '🤖 System' })
     .catch(e => console.error('[notify]', e.message));
 }

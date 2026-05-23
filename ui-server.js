@@ -150,6 +150,13 @@ app.post('/api/risk-off', (req, res) => {
   runInline(() => runForUsers(), 'risk-off');
 });
 
+// ── Internal Log (from agent.js) ─────────────────────────────────────────────
+app.post('/internal/log', (req, res) => {
+  const { line } = req.body || {};
+  if (line) broadcast({ type:'log', line });
+  res.json({ ok: true });
+});
+
 // ── Withdraw ─────────────────────────────────────────────────────────────────
 app.post('/api/withdraw', async (req, res) => {
   try {
