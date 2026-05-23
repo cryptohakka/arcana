@@ -192,7 +192,7 @@ Provide:
 
 For portfolio management context: determine if conditions favor RISK-ON (deploy capital into yield vaults) or RISK-OFF (park capital in USYC stable yield).
 
-Be concise, 3-5 sentences.`;
+Be concise, 3-5 sentences. Start directly with your analysis — no preamble like 'Here is my analysis'.`;
 
   const architectReply = await infer([{ role: 'user', content: architectPrompt }], 600, 'Architect');
   await sendAsAgent('architect', `**Round 1 — Analysis**\n${architectReply}`);
@@ -208,7 +208,7 @@ Architect's Analysis:
 ${architectReply}
 
 Identify weaknesses in the analysis and conclude with your own view: is the market RISK-ON or RISK-OFF right now?
-Be critical and concise, 3-5 sentences.`;
+Be critical and concise, 3-5 sentences. Start directly with your critique — no preamble like 'As Auditor' or 'I find'.`;
 
   const auditorReply = await infer([{ role: 'user', content: auditorPrompt }], 600, 'Auditor');
   await sendAsAgent('auditor', `**Round 2 — Review**\n${auditorReply}`);
