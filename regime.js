@@ -268,11 +268,17 @@ Rules:
     funding_rate: btc.funding_rate,
     oi_change: btc.deltas?.oi_change_pct_3h ?? null,
     updated_at: new Date().toISOString(),
-    council: {
-      architect: (architectReply.match(/^[^.!?]+[.!?]/)?.[0] || architectReply.slice(0, 100)).trim(),
-      auditor:   (auditorReply.match(/^[^.!?]+[.!?]/)?.[0] || auditorReply.slice(0, 100)).trim(),
-      arbiter:   (result.reasoning?.match(/^[^.!?]+[.!?]/)?.[0] || result.reasoning?.slice(0, 100) || '').trim(),
-    },
+    council: (() => {
+      const clean = s => s.replace(/#{1,3}[^
+]*/g,'').replace(/\*\*/g,'').replace(/
++/g,' ').trim();
+      const first = s => (clean(s).match(/[^.!?]+[.!?]/)?.[0] || clean(s).slice(0, 100)).trim();
+      return {
+        architect: first(architectReply),
+        auditor:   first(auditorReply),
+        arbiter:   first(result.reasoning || arbiterRaw),
+      };
+    })(),
   };
   fs.writeFileSync(REGIME_PATH, JSON.stringify(regime, null, 2));
 
