@@ -426,20 +426,41 @@ module.exports = Object.assign(module.exports, { getAgentWalletBalance, sendFrom
 const { AppKit } = require('@circle-fin/app-kit');
 const { createViemAdapterFromPrivateKey } = require('@circle-fin/adapter-viem-v2');
 
-function getAppKitAdapter() {
-  return createViemAdapterFromPrivateKey({ privateKey: process.env.PRIVATE_KEY });
+function getAppKitAdapter(walletId, walletAddress) {
+  if (walletId && walletAddress) {
+    const { createCircleWalletsAdapter } = require('@circle-fin/adapter-circle-wallets');
+    return { adapter: createCircleWalletsAdapter({
+      apiKey: process.env.CIRCLE_API_KEY,
+      entitySecret: process.env.CIRCLE_ENTITY_SECRET,
+    }), address: walletAddress };
+  }
+  const { createPublicClient, http } = require('viem');
+  const { baseSepolia } = require('viem/chains');
+  const BASE_SEP_RPC = process.env.RPC_BASE_SEPOLIA || 'https://base-sepolia-rpc.publicnode.com';
+  return {
+    adapter: createViemAdapterFromPrivateKey({
+      privateKey: process.env.PRIVATE_KEY,
+      getPublicClient: ({ chain }) => {
+        if (chain.id === baseSepolia.id) {
+          return createPublicClient({ chain, transport: http(BASE_SEP_RPC, { retryCount: 3, timeout: 15000 }) });
+        }
+        return createPublicClient({ chain, transport: http(undefined, { retryCount: 3, timeout: 15000 }) });
+      },
+    }),
+    address: null
+  };
 }
 
-async function unifiedTransferToArc(amountUsdc, recipientAddress = null) {
+async function unifiedTransferToArc(amountUsdc, recipientAddress = null, walletId = null, walletAddress = null) {
   const kit = new AppKit();
-  const adapter = getAppKitAdapter();
-  const recipient = recipientAddress || process.env.WALLET_ADDRESS;
+  const { adapter, address } = getAppKitAdapter(walletId, walletAddress);
+  const recipient = recipientAddress || address || process.env.WALLET_ADDRESS;
   console.log(`[arc] Unified spend: Base_Sepolia → Arc_Testnet ${amountUsdc} USDC...`);
   const result = await kit.unifiedBalance.spend({
     amount: amountUsdc.toString(),
     token: 'USDC',
-    from: [{ adapter }],
-    to: { adapter, chain: 'Arc_Testnet', recipientAddress: recipient },
+    from: { adapter, ...(address ? { address } : {}) },
+    to: { adapter, chain: 'Arc_Testnet', recipientAddress: recipient, ...(address ? { address } : {}) },
   });
   console.log(`[arc] Minted on Arc Testnet: ${result.txHash}`);
   // Wait for Arc Testnet wallet balance to reflect the mint
@@ -448,26 +469,39 @@ async function unifiedTransferToArc(amountUsdc, recipientAddress = null) {
   return result.txHash;
 }
 
-async function unifiedTransferFromArc(amountUsdc, recipientAddress = null) {
+async function unifiedTransferFromArc(amountUsdc, recipientAddress = null, walletId = null, walletAddress = null) {
   const kit = new AppKit();
-  const adapter = getAppKitAdapter();
-  const recipient = recipientAddress || process.env.WALLET_ADDRESS;
+  // spendはviemアダプター（カスタムRPC）で実行、受取先をCircle Walletアドレスに
+  const { adapter } = getAppKitAdapter(null, null);
+  const { address } = getAppKitAdapter(walletId, walletAddress);
+  const recipient = recipientAddress || address || process.env.WALLET_ADDRESS;
   console.log(`[arc] Unified spend: Arc_Testnet → Base_Sepolia ${amountUsdc} USDC...`);
-  const result = await kit.unifiedBalance.spend({
-    amount: amountUsdc.toString(),
-    token: 'USDC',
-    from: [{ adapter }],
-    to: { adapter, chain: 'Base_Sepolia', recipientAddress: recipient },
-  });
+  let result;
+  try {
+    result = await kit.unifiedBalance.spend({
+      amount: amountUsdc.toString(),
+      token: 'USDC',
+      from: { adapter },
+      to: { adapter, chain: 'Base_Sepolia', recipientAddress: recipient },
+    });
+  } catch(e) {
+    // Mint failure後もtxHashが取れる場合がある
+    const txHash = e?.cause?.trace?.txHash || e?.cause?.trace?.mintTxHash;
+    if (txHash) {
+      console.log(`[arc] Mint RPC error but tx found: ${txHash}`);
+      return txHash;
+    }
+    throw e;
+  }
   console.log(`[arc] Minted on Base Sepolia: ${result.txHash}`);
   return result.txHash;
 }
 
-async function getUnifiedBalance() {
+async function getUnifiedBalance(walletId = null, walletAddress = null) {
   const kit = new AppKit();
-  const adapter = getAppKitAdapter();
+  const { adapter, address } = getAppKitAdapter(walletId, walletAddress);
   const result = await kit.unifiedBalance.getBalances({
-    sources: [{ adapter }],
+    sources: [{ adapter, ...(address ? { address } : {}) }],
     networkType: 'testnet',
     includePending: true,
   });
@@ -478,14 +512,16 @@ async function getUnifiedBalance() {
   };
 }
 
+module.exports = { ...module.exports, getAppKitAdapter };
+
 module.exports = { ...module.exports, unifiedTransferToArc, unifiedTransferFromArc, getUnifiedBalance };
 
-async function unifiedDeposit(amountUsdc, chain = 'Base_Sepolia') {
+async function unifiedDeposit(amountUsdc, chain = 'Base_Sepolia', walletId = null, walletAddress = null) {
   const kit = new AppKit();
-  const adapter = getAppKitAdapter();
+  const { adapter, address } = getAppKitAdapter(walletId, walletAddress);
   console.log(`[arc] Unified deposit: ${chain} → Unified Balance ${amountUsdc} USDC...`);
   const result = await kit.unifiedBalance.deposit({
-    from: { adapter, chain },
+    from: { adapter, chain, ...(address ? { address } : {}) },
     amount: amountUsdc.toString(),
     token: 'USDC',
   });
@@ -494,7 +530,7 @@ async function unifiedDeposit(amountUsdc, chain = 'Base_Sepolia') {
   const target = parseFloat(amountUsdc) * 0.9; // 90% threshold
   const start = Date.now();
   while (Date.now() - start < 120000) {
-    const balances = await kit.unifiedBalance.getBalances({ sources: [{ adapter }], networkType: 'testnet', includePending: true });
+    const balances = await kit.unifiedBalance.getBalances({ sources: [{ adapter, ...(address ? { address } : {}) }], networkType: 'testnet', includePending: true });
     const b = balances.breakdown?.[0]?.breakdown?.find(x => x.chain === chain);
     const confirmed = parseFloat(b?.confirmedBalance || 0);
     const pending   = parseFloat(b?.pendingBalance || 0);

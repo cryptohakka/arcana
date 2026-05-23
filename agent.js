@@ -71,8 +71,8 @@ async function findBestVault(walletAddress, amountUsd) {
 }
 
 // ── Risk-on: deploy into best yield vault ────────────────────────────────────
-async function getArcWalletBalance() {
-  const { createPublicClient, http, formatUnits, parseUnits } = require('viem');
+async function getArcWalletBalance(address = null) {
+  const { createPublicClient, http, formatUnits } = require('viem');
   const arcTestnetChain = {
     id: 2911, name: 'Arc Testnet',
     rpcUrls: { default: { http: [process.env.RPC_ARC] } },
@@ -80,7 +80,8 @@ async function getArcWalletBalance() {
   const ARC_USDC = '0x3600000000000000000000000000000000000000';
   const ERC20_ABI = [{ name: 'balanceOf', type: 'function', inputs: [{ type: 'address' }], outputs: [{ type: 'uint256' }], stateMutability: 'view' }];
   const client = createPublicClient({ chain: arcTestnetChain, transport: http(process.env.RPC_ARC) });
-  const bal = await client.readContract({ address: ARC_USDC, abi: ERC20_ABI, functionName: 'balanceOf', args: [process.env.WALLET_ADDRESS] });
+  const target = address || process.env.WALLET_ADDRESS;
+  const bal = await client.readContract({ address: ARC_USDC, abi: ERC20_ABI, functionName: 'balanceOf', args: [target] });
   return parseFloat(formatUnits(bal, 6));
 }
 
@@ -90,19 +91,19 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
 
   // Retrieve parked USDC from Arc Testnet back to Base Sepolia
   try {
-    const arcBalances = await getUnifiedBalance();
+    const arcBalances = await getUnifiedBalance(walletId, walletAddress);
     const arcAvailable = arcBalances.arcTestnet || 0;
     console.log(`[agent] gateway balance: arcTestnet=${arcAvailable} USDC`);
     // Use actual Arc Testnet wallet balance, not Gateway API balance
-    const arcWalletBal = await getArcWalletBalance();
+    const arcWalletBal = await getArcWalletBalance(walletAddress);
     console.log(`[agent] arc wallet balance: ${arcWalletBal} USDC`);
     const retrievable = arcWalletBal; // Arc Testnet wallet balance (deposit then spend)
     if (retrievable >= 0.1) {
       const retrieveAmount = (Math.floor(retrievable * 0.9 * 10) / 10).toString();
       console.log(`[agent] retrieving ${retrieveAmount} USDC ← Arc Testnet...`);
       await notify(`🌉 **Retrieving ${retrieveAmount} USDC ← Arc Testnet** (risk-on)`);
-      await unifiedDeposit(retrieveAmount, 'Arc_Testnet');
-      const burnTx = await unifiedTransferFromArc(retrieveAmount);
+      await unifiedDeposit(retrieveAmount, 'Arc_Testnet', walletId, walletAddress);
+      const burnTx = await unifiedTransferFromArc(retrieveAmount, null, walletId, walletAddress);
       console.log(`[agent] retrieve tx: ${burnTx}`);
       await notify('✅ **Retrieved from Arc** — tx: `' + burnTx + '`');
       recordTx({ type: 'arcana-arc-retrieve', amount: retrieveAmount, regime: 'risk_on', tx: burnTx });
@@ -196,16 +197,16 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
     if (walletBal >= 1) {
       const depositAmount = (Math.floor(walletBal * 0.9 * 10) / 10).toString();
       console.log(`[agent] depositing ${depositAmount} USDC to Unified Balance...`);
-      await unifiedDeposit(depositAmount);
+      await unifiedDeposit(depositAmount, 'Base_Sepolia', walletId, walletAddress);
     }
-    const balances = await getUnifiedBalance();
+    const balances = await getUnifiedBalance(walletId, walletAddress);
     const available = balances.baseSepolia || 0;
     console.log(`[agent] gateway balance: baseSepolia=${available} USDC`);
     if (available >= 0.5) {
       const bridgeAmount = (Math.floor(available * 10) / 10).toString();
       console.log(`[agent] bridging ${bridgeAmount} USDC → Arc Testnet...`);
       await notify(`🌉 **Bridging ${bridgeAmount} USDC → Arc Testnet** (USYC parking)`);
-      const mintTx = await unifiedTransferToArc(bridgeAmount);
+      const mintTx = await unifiedTransferToArc(bridgeAmount, null, walletId, walletAddress);
       console.log(`[agent] bridge tx: ${mintTx}`);
       await notify('✅ **Parked on Arc** — tx: `' + mintTx + '`');
       recordTx({ type: 'arcana-arc-bridge', amount: bridgeAmount, regime: 'risk_off', tx: mintTx });
@@ -310,7 +311,7 @@ async function run() {
 }
 
 // Export actions for ui-server
-module.exports = { executeRiskOn, executeRiskOff };
+module.exports = { executeRiskOn, executeRiskOff, getAllUsers };
 
 if (require.main === module) {
   run().catch(e => {

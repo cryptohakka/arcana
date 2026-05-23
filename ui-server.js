@@ -60,21 +60,23 @@ app.get('/api/balances', async (req, res) => {
       walletAddress = process.env.CIRCLE_WALLET_ADDRESS;
     }
 
-    const [ub, agent] = await Promise.all([
+    const walletId = userEoa ? db.prepare('SELECT wallet_id FROM users WHERE eoa = ?').get(userEoa)?.wallet_id : process.env.CIRCLE_WALLET_ID;
+    const [ub, circleTokens] = await Promise.all([
       kit.unifiedBalance.getBalances({
         sources: [{ adapter, ...(userEoa ? { address: walletAddress } : {}) }],
         networkType: 'testnet',
         includePending: true
       }),
-      getAgentWalletBalance()
+      getAgentWalletBalance(walletId)
     ]);
     const breakdown = ub.breakdown?.[0]?.breakdown || [];
     const chains = breakdown.map(c => ({ chain: c.chain, balance: parseFloat(c.confirmedBalance || '0') }));
-    const agentUsdc = parseFloat(agent.find(t => t.token.symbol === 'USDC')?.amount || '0');
-    const total = parseFloat(ub.totalConfirmedBalance || '0');
+    const circleWallet = parseFloat(circleTokens.find(t => t.token?.symbol === 'USDC')?.amount || '0');
+    const unifiedTotal = parseFloat(ub.totalConfirmedBalance || '0');
+    const total = circleWallet + unifiedTotal;
     const baseSepolia = chains.find(c => c.chain === 'Base_Sepolia')?.balance || 0;
     const arcTestnet  = chains.find(c => c.chain === 'Arc_Testnet')?.balance || 0;
-    res.json({ chains, total, agentWallet: agentUsdc, baseSepolia, arcTestnet, walletAddress });
+    res.json({ chains, unifiedTotal, circleWallet, total, baseSepolia, arcTestnet, walletAddress });
   }
   catch(e) { res.status(500).json({ error: e.message }); }
   finally { console.log = orig; }
@@ -119,17 +121,33 @@ app.post('/api/regime-check', (req, res) => {
 });
 app.post('/api/risk-on', (req, res) => {
   res.json({ ok:true });
-  const { ethers } = require('ethers');
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY).address;
+  const eoa = req.body?.eoa?.toLowerCase();
   const regime = (() => { try { return JSON.parse(fs.readFileSync(REGIME_PATH,'utf8')); } catch { return {}; } })();
-  runInline(() => executeRiskOn(regime, wallet), 'risk-on');
+  async function runForUsers() {
+    const { getAllUsers } = require('./agent');
+    const users = eoa
+      ? [db.prepare('SELECT eoa, wallet_id, wallet_address FROM users WHERE eoa=?').get(eoa)].filter(Boolean)
+      : getAllUsers();
+    for (const user of users) {
+      await executeRiskOn(regime, user.wallet_address, user.wallet_id, user.eoa);
+    }
+  }
+  runInline(() => runForUsers(), 'risk-on');
 });
 app.post('/api/risk-off', (req, res) => {
   res.json({ ok:true });
-  const { ethers } = require('ethers');
-  const wallet = new ethers.Wallet(process.env.PRIVATE_KEY).address;
+  const eoa = req.body?.eoa?.toLowerCase();
   const regime = (() => { try { return JSON.parse(fs.readFileSync(REGIME_PATH,'utf8')); } catch { return {}; } })();
-  runInline(() => executeRiskOff(regime, wallet), 'risk-off');
+  async function runForUsers() {
+    const { getAllUsers } = require('./agent');
+    const users = eoa
+      ? [db.prepare('SELECT eoa, wallet_id, wallet_address FROM users WHERE eoa=?').get(eoa)].filter(Boolean)
+      : getAllUsers();
+    for (const user of users) {
+      await executeRiskOff(regime, user.wallet_address, user.wallet_id, user.eoa);
+    }
+  }
+  runInline(() => runForUsers(), 'risk-off');
 });
 
 // ── User Wallet Management ───────────────────────────────────────────────────

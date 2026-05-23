@@ -202,16 +202,16 @@ main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
           <div class="ov-card">
             <div class="ov-hdr"><span class="ov-title">Portfolio · Circle Gateway</span></div>
             <div class="ov-body">
-              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ AGENT WALLET</div>
-              <div class="ub-row" style="border-bottom:1px solid var(--border);margin-bottom:6px;padding-bottom:6px;">
-                <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain" style="font-size:13px;font-weight:600;">Agent Wallet</span><span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">DCW</span></div>
-                <div><span class="ub-val" id="ubAgent">—</span><span class="ub-usdc">USDC</span></div>
+              <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ CIRCLE WALLET</div>
+              <div class="ub-row" style="border-bottom:1px solid var(--border);margin-bottom:4px;padding-bottom:6px;">
+                <div class="ub-left"><div class="ub-dot" style="background:#7b5ea7;"></div><span class="ub-chain" style="font-size:13px;font-weight:600;">Circle Wallet</span><span class="ub-badge" style="background:rgba(123,94,167,0.15);color:#a78bda;border-color:rgba(123,94,167,0.3);">DCW</span></div>
+                <div><span class="ub-val" id="ubCircle">—</span><span class="ub-usdc">USDC</span></div>
               </div>
               <div id="depositSection"></div>
               <div style="margin-top:8px;padding-top:6px;border-top:1px solid var(--border);">
                 <div style="font-family:var(--mono);font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-bottom:6px;">■ UNIFIED BALANCE · APP KIT</div>
                 <div id="ubChainList"></div>
-                <div class="ub-row" style="border-bottom:none;margin-top:4px;">
+                <div class="ub-row" style="border-bottom:none;margin-top:4px;border-top:1px solid var(--border);padding-top:4px;">
                   <div class="ub-left"><div class="ub-dot" style="background:var(--ok);"></div><span class="ub-chain">Total</span></div>
                   <div><span class="ub-val ok" id="ubTotal">—</span><span class="ub-usdc">USDC</span></div>
                 </div>
@@ -319,6 +319,7 @@ async function registerUserWallet(eoa){
       showDepositAddress(data.walletAddress);
       addLog('Agent wallet: '+data.walletAddress,'ok');
       fetchUserCount();
+      fetchState();
       return;
     }
     addLog('Sign once to create your agent wallet…','accent');
@@ -332,6 +333,7 @@ async function registerUserWallet(eoa){
     addLog((result.created?'✅ Agent wallet created: ':'✅ Agent wallet: ')+result.walletAddress,'ok');
     showToast(result.created?'Agent wallet created!':'Welcome back!','ok');
     fetchUserCount();
+    fetchState();
   }catch(e){addLog('Wallet setup failed: '+e.message,'danger');}
 }
 
@@ -372,7 +374,7 @@ function clrLog(){document.getElementById('log').innerHTML='';}
 async function forceAction(type){
   addLog(`[manual] triggering ${type}...`,'dim');
   try{
-    const r=await fetch(API+'/api/'+type,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({wallet:wallet})});
+    const r=await fetch(API+'/api/'+type,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({eoa:wallet})});
     if(!r.ok)addLog('[error] '+await r.text(),'err');
   }catch(e){addLog('[error] '+e.message,'err');}
 }
@@ -474,9 +476,8 @@ function updateBalances(d){
       return `<div class="ub-row"><div class="ub-left"><div class="ub-dot" style="background:${color};"></div><span class="ub-chain">${label}</span>${badge}</div><div><span class="ub-val ${valCls}">${c.balance.toFixed(4)}</span><span class="ub-usdc">USDC</span></div></div>`;
     }).join('');
   }
-  const total=(d.total||0)+(d.agentWallet||0);
-  document.getElementById('ubTotal').textContent=total.toFixed(4);
-  const agentEl=document.getElementById('ubAgent');if(agentEl)agentEl.textContent=(d.agentWallet||0).toFixed(4);
+  const circleEl=document.getElementById('ubCircle');if(circleEl)circleEl.textContent=(d.circleWallet||0).toFixed(4);
+  document.getElementById('ubTotal').textContent=(d.total||0).toFixed(4);
 }
 
 function renderSpark(data){
@@ -518,7 +519,7 @@ function renderSpark(data){
 
 async function fetchState(){
   try{const r=await fetch(API+'/api/regime');if(r.ok)updateRegime(await r.json());}catch{}
-  try{const url=API+'/api/balances'+(wallet?'?address='+wallet:'');const r=await fetch(url);if(r.ok)updateBalances(await r.json());}catch{}
+  if(wallet){try{const r=await fetch(API+'/api/balances?address='+wallet);if(r.ok)updateBalances(await r.json());}catch{}}
   try{const r=await fetch(API+'/api/snapshots');if(r.ok){const sd=await r.json();requestAnimationFrame(()=>renderSpark(sd));}}catch{}
   try{const r=await fetch(API+'/api/tx-history');if(r.ok){txHistory=await r.json();}}catch{}
   fetchUserCount();
