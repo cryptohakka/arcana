@@ -20,13 +20,22 @@ app.use(express.json());
 
 // SSE
 const clients = new Set();
+const logBuffer = []; // 最大200件保持
 function broadcast(obj) {
+  if (obj.type === 'log') {
+    logBuffer.push({ ...obj, ts: new Date().toISOString() });
+    if (logBuffer.length > 200) logBuffer.shift();
+  }
   const data = 'data: ' + JSON.stringify(obj) + '\n\n';
   clients.forEach(c => c.write(data));
 }
 app.get('/events', (req, res) => {
   res.set({ 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', 'Connection':'keep-alive' });
   res.flushHeaders();
+  // 過去ログを流す
+  for (const entry of logBuffer) {
+    res.write('data: ' + JSON.stringify(entry) + '\n\n');
+  }
   clients.add(res);
   req.on('close', () => clients.delete(res));
 });
@@ -148,6 +157,14 @@ app.post('/api/risk-off', (req, res) => {
     }
   }
   runInline(() => runForUsers(), 'risk-off');
+});
+
+// ── User Count ───────────────────────────────────────────────────────────────
+app.get('/api/users', (req, res) => {
+  try {
+    const count = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    res.json({ count: count.count });
+  } catch(e) { res.json({ count: 0 }); }
 });
 
 // ── Internal Log (from agent.js) ─────────────────────────────────────────────
