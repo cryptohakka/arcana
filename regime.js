@@ -45,7 +45,7 @@ async function sendAsAgent(role, content) {
   // broadcast to Live Log (summary: first 300 chars)
   if (global._broadcast) {
     const label = nameMap[role] || role;
-    const summary = content.replace(/\*\*/g,'').replace(/\n+/g,' ').trim().slice(0,300);
+    const summary = content.replace(/\*\*/g,'').replace(/\*/g,'').replace(/`{1,3}/g,'').replace(/\n+/g,' ').trim().slice(0,300);
     global._broadcast({ type:'log', line: `[${label}] ${summary}` });
   }
   if (!url) return;
@@ -243,7 +243,7 @@ Rules:
 - confidence reflects Auditor's criticism strength (stronger criticism = lower confidence)`;
 
   const arbiterRaw = await infer([{ role: 'user', content: arbiterPrompt }], 400, 'Arbiter');
-  console.log('[Arbiter] ' + arbiterRaw.slice(0, 200));
+  // raw log deferred until after parse
 
   // Parse JSON
   const match = arbiterRaw.match(/\{[\s\S]*\}/);
