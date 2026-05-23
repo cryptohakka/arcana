@@ -5,3 +5,5 @@ positions.json
 regime.json
 snapshots.json
 *.log
+*.db
+*.dat
