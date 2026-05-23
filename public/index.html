@@ -480,6 +480,7 @@ function logClass(l){
 function setOnline(ok){document.getElementById('sysDot').className='sys-dot'+(ok?'':' off');}
 
 function updateRegime(d){
+  window._lastRegime = d;
   const cre=document.getElementById('sbConfRight');if(cre)cre.textContent=d.confidence?Math.round(d.confidence*100)+'%':'—';
   if(!d)return;
   const r=d.regime||'neutral';
@@ -625,7 +626,19 @@ function renderVaultPosition(positions){
   const totalEl = document.getElementById('vaultTotal');
   if(!el) return;
   if(!positions || positions.length === 0){
-    el.innerHTML = '<div style="color:var(--text3);font-family:var(--mono);font-size:11px;text-align:center;padding:8px;">No active position</div>';
+    // Show state based on current regime
+    const regime = window._lastRegime;
+    let stateHtml;
+    if(!regime){
+      stateHtml = '<span style="color:var(--text3);">NO POSITION</span>';
+    } else if(regime.regime === 'risk_off'){
+      stateHtml = '<span style="color:#4d9fff;letter-spacing:1px;">⬡ PARKED ON ARC</span><div style="color:var(--text3);font-size:9px;margin-top:3px;">USDC · Arc Testnet</div>';
+    } else if(regime.regime === 'risk_on'){
+      stateHtml = '<span style="color:#facc15;letter-spacing:1px;">↑ DEPLOYING TO VAULT</span><div style="color:var(--text3);font-size:9px;margin-top:3px;">scanning LI.FI Earn...</div>';
+    } else {
+      stateHtml = '<span style="color:var(--text3);">◎ IDLE · USDC</span>';
+    }
+    el.innerHTML = '<div style="font-family:var(--mono);font-size:11px;text-align:center;padding:10px;">'+stateHtml+'</div>';
     if(totalEl) totalEl.textContent = '$0.00';
     updatePortfolioTotal();
     return;
