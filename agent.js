@@ -27,11 +27,11 @@ const INTERVAL_MS  = parseInt(process.env.REGIME_CHECK_INTERVAL) || 15 * 60 * 10
 const WEBHOOK_SYSTEM = process.env.DISCORD_SYSTEM_WEBHOOK;
 
 // ── Discord notify ────────────────────────────────────────────────────────────
-async function notify(content) {
+async function notify(content, eoa = null) {
   console.log('[notify]', content.slice(0, 80));
   fetch('http://localhost:'+(process.env.ARCANA_PORT||5003)+'/internal/log', {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ line: content })
+    body: JSON.stringify({ line: content, eoa })
   }).catch(()=>{});
   await axios.post(WEBHOOK_SYSTEM, { content, username: '🤖 System' })
     .catch(e => console.error('[notify]', e.message));
@@ -105,28 +105,28 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
     if (retrievable >= 0.1) {
       const retrieveAmount = (Math.floor(retrievable * 0.9 * 10) / 10).toString();
       console.log(`[agent] retrieving ${retrieveAmount} USDC ← Arc Testnet...`);
-      await notify(`🌉 **Retrieving ${retrieveAmount} USDC ← Arc Testnet** (risk-on)`);
+      await notify(`🌉 **Retrieving ${retrieveAmount} USDC ← Arc Testnet** (risk-on)`, eoa);
       await unifiedDeposit(retrieveAmount, 'Arc_Testnet', walletId, walletAddress);
       const burnTx = await unifiedTransferFromArc(retrieveAmount, null, walletId, walletAddress);
       console.log(`[agent] retrieve tx: ${burnTx}`);
-      await notify('✅ **Retrieved from Arc** — tx: `' + burnTx + '`');
+      await notify('✅ **Retrieved from Arc** — tx: `' + burnTx + '`', eoa);
       recordTx({ type: 'arcana-arc-retrieve', amount: retrieveAmount, regime: 'risk_on', tx: burnTx });
       await new Promise(r => setTimeout(r, 5000));
     }
   } catch (e) {
-    await notify(`⚠️ **Arc retrieve failed** — ${e.message?.slice(0, 100)}`);
+    await notify(`⚠️ **Arc retrieve failed** — ${e.message?.slice(0, 100)}`, eoa);
     console.error('[agent] arc retrieve error:', e.message);
   }
 
   const usdcBal = await getUsdcBalance(fromChainId, walletAddress);
   if (usdcBal < 1) {
-    await notify(`⚠️ **Risk-On skipped** — USDC balance too low ($${usdcBal.toFixed(2)})`);
+    await notify(`⚠️ **Risk-On skipped** — USDC balance too low ($${usdcBal.toFixed(2)})`, eoa);
     return;
   }
 
   const best = await findBestVault(walletAddress, usdcBal);
   if (!best) {
-    await notify('⚠️ **Risk-On skipped** — no suitable vault found');
+    await notify('⚠️ **Risk-On skipped** — no suitable vault found', eoa);
     return;
   }
 
@@ -135,7 +135,7 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
     `BTC: $${regime.btc_price} | Phase: ${regime.phase} | Confidence: ${regime.confidence}\n` +
     `→ Deploying $${usdcBal.toFixed(2)} USDC into **${best.vault.name}** (${best.vault.protocol})\n` +
     `  APY: ${best.apy.toFixed(2)}% | Chain: ${best.vault.chainId}`
-  );
+  , eoa);
 
   // Dry-run: vault deposit skipped (Arc Testnet -> Base Sepolia testnet only)
   // LI.FI Earn API identifies optimal mainnet vault in real-time.
@@ -156,14 +156,11 @@ async function executeRiskOn(regime, walletAddress, walletId, eoa) {
     regime:  'risk_on',
   });
   await notify(
-    `✅ **Risk-On: Vault Selected** (LI.FI Earn)
-` +
-    `-> **${best.vault.name}** (${best.vault.protocol}) on ${best.vault.network}
-` +
-    `   APY: ${best.apy.toFixed(2)}% | Score: ${best.score} | TVL: $${(best.tvlUsd/1e6).toFixed(1)}M
-` +
+    `✅ **Risk-On: Vault Selected** (LI.FI Earn)\n` +
+    `-> **${best.vault.name}** (${best.vault.protocol}) on ${best.vault.network}\n` +
+    `   APY: ${best.apy.toFixed(2)}% | Score: ${best.score} | TVL: $${(best.tvlUsd/1e6).toFixed(1)}M\n` +
     `   Amount: $${usdcBal.toFixed(2)} USDC (mainnet deposit: ready)`
-  );
+  , eoa);
 }
 
 // ── Risk-off: consolidate into USYC ──────────────────────────────────────────
@@ -173,14 +170,11 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
   const positions = eoa ? [getPosition(eoa)].filter(Boolean) : loadPositions();
   console.log("[agent] active positions: " + positions.length);
   await notify(
-    `🔴 **Risk-Off**
-` +
-    `BTC: $${regime.btc_price} | Phase: ${regime.phase} | Confidence: ${regime.confidence}
-` +
-    `→ ${positions.length > 0 ? "Consolidating " + positions.length + " position(s) into USYC" : "No vault positions — bridging idle USDC to Arc"}
-` +
+    `🔴 **Risk-Off**\n` +
+    `BTC: $${regime.btc_price} | Phase: ${regime.phase} | Confidence: ${regime.confidence}\n` +
+    `→ ${positions.length > 0 ? "Consolidating " + positions.length + " position(s) into USYC" : "No vault positions — bridging idle USDC to Arc"}\n` +
     `  Reason: ${regime.reasoning}`
-  );
+  , eoa);
 
   for (const pos of positions) {
     recordTx({
@@ -196,12 +190,15 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
   // Bridge idle USDC to Arc Testnet (USYC stable yield)
   try {
     // Deposit wallet USDC into Unified Balance first
-    const walletBal = await getUsdcBalance(ARC_PAIR_CHAIN, walletAddress);
+    // Base SepoliaのUSDCはviemアダプターのEOA（PRIVATE_KEY）が保持
+    const { privateKeyToAccount } = require('viem/accounts');
+    const viemEoa = privateKeyToAccount(process.env.PRIVATE_KEY).address;
+    const walletBal = await getUsdcBalance(ARC_PAIR_CHAIN, viemEoa);
     console.log(`[agent] wallet balance: baseSepolia=${walletBal} USDC`);
     if (walletBal >= 1) {
       const depositAmount = (Math.floor(walletBal * 0.9 * 10) / 10).toString();
       console.log(`[agent] depositing ${depositAmount} USDC to Unified Balance...`);
-      await unifiedDeposit(depositAmount, 'Base_Sepolia', walletId, walletAddress);
+      await unifiedDeposit(depositAmount, 'Base_Sepolia', null, null); // viemアダプター使用
     }
     const balances = await getUnifiedBalance(walletId, walletAddress);
     const available = balances.baseSepolia || 0;
@@ -209,21 +206,21 @@ async function executeRiskOff(regime, walletAddress, walletId, eoa) {
     if (available >= 0.5) {
       const bridgeAmount = (Math.floor(available * 10) / 10).toString();
       console.log(`[agent] bridging ${bridgeAmount} USDC → Arc Testnet...`);
-      await notify(`🌉 **Bridging ${bridgeAmount} USDC → Arc Testnet** (USYC parking)`);
+      await notify(`🌉 **Bridging ${bridgeAmount} USDC → Arc Testnet** (USYC parking)`, eoa);
       const mintTx = await unifiedTransferToArc(bridgeAmount, null, walletId, walletAddress);
       console.log(`[agent] bridge tx: ${mintTx}`);
-      await notify('✅ **Parked on Arc** — tx: `' + mintTx + '`');
+      await notify('✅ **Parked on Arc** — tx: `' + mintTx + '`', eoa);
       recordTx({ type: 'arcana-arc-bridge', amount: bridgeAmount, regime: 'risk_off', tx: mintTx });
     } else {
-      await notify(`ℹ️ Gateway balance low (${available} USDC), skipping Arc bridge`);
+      await notify(`ℹ️ Gateway balance low (${available} USDC), skipping Arc bridge`, eoa);
     }
   } catch (e) {
-    await notify(`⚠️ **Arc bridge failed** — ${e.message?.slice(0, 100)}`);
+    await notify(`⚠️ **Arc bridge failed** — ${e.message?.slice(0, 100)}`, eoa);
     console.error('[agent] arc bridge error:', e.message);
   }
 
   if (eoa) clearPosition(eoa); else savePositions([]);
-  await notify(`✅ **Consolidated** — Capital parked in USYC stable yield`);
+  await notify(`✅ **Consolidated** — Capital parked in USYC stable yield`, eoa);
 }
 
 // ── DB ────────────────────────────────────────────────────────────────────────

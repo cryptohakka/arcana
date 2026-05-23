@@ -19,25 +19,48 @@ app.use(express.json());
 
 
 // SSE
-const clients = new Set();
-const logBuffer = []; // 最大200件保持
-function broadcast(obj) {
+const clients = new Map(); // eoa -> Set<res>
+const logBuffers = new Map(); // eoa -> [{id,line,ts}]
+function getLogBuffer(eoa) {
+  if (!logBuffers.has(eoa)) logBuffers.set(eoa, []);
+  return logBuffers.get(eoa);
+}
+function broadcast(obj, eoa = null) {
   if (obj.type === 'log') {
-    logBuffer.push({ ...obj, ts: new Date().toISOString() });
-    if (logBuffer.length > 200) logBuffer.shift();
+    const targets = eoa ? [eoa] : [...logBuffers.keys(), '__global__'];
+    for (const key of (eoa ? [eoa] : ['__global__'])) {
+      const buf = getLogBuffer(key);
+      const id = (buf.length > 0 ? buf[buf.length-1].id : 0) + 1;
+      buf.push({ ...obj, ts: new Date().toISOString(), id });
+      if (buf.length > 200) buf.shift();
+    }
   }
-  const data = 'data: ' + JSON.stringify(obj) + '\n\n';
-  clients.forEach(c => c.write(data));
+  if (eoa) {
+    const conns = clients.get(eoa);
+    if (conns) conns.forEach(c => c.write('data: ' + JSON.stringify(obj) + '\n\n'));
+  } else {
+    // global broadcast (regime, balances等)
+    clients.forEach(conns => conns.forEach(c => c.write('data: ' + JSON.stringify(obj) + '\n\n')));
+  }
 }
 app.get('/events', (req, res) => {
   res.set({ 'Content-Type':'text/event-stream', 'Cache-Control':'no-cache', 'Connection':'keep-alive' });
   res.flushHeaders();
-  // 過去ログを流す
-  for (const entry of logBuffer) {
-    res.write('data: ' + JSON.stringify(entry) + '\n\n');
+  const eoa = req.query.eoa?.toLowerCase() || '__global__';
+  const lastId = parseInt(req.headers['last-event-id'] || '0');
+  const buf = getLogBuffer(eoa);
+  const toSend = lastId > 0 ? buf.filter(e => e.id > lastId) : buf;
+  for (const entry of toSend) {
+    res.write('id: ' + entry.id + '\ndata: ' + JSON.stringify(entry) + '\n\n');
   }
-  clients.add(res);
-  req.on('close', () => clients.delete(res));
+  // heartbeat
+  res.write(': heartbeat\n\n');
+  if (!clients.has(eoa)) clients.set(eoa, new Set());
+  clients.get(eoa).add(res);
+  req.on('close', () => {
+    const conns = clients.get(eoa);
+    if (conns) { conns.delete(res); if (conns.size === 0) clients.delete(eoa); }
+  });
 });
 
 // GET
@@ -70,18 +93,27 @@ app.get('/api/balances', async (req, res) => {
     }
 
     const walletId = userEoa ? db.prepare('SELECT wallet_id FROM users WHERE eoa = ?').get(userEoa)?.wallet_id : process.env.CIRCLE_WALLET_ID;
-    const [ub, circleTokens] = await Promise.all([
-      kit.unifiedBalance.getBalances({
-        sources: [{ adapter, ...(userEoa ? { address: walletAddress } : {}) }],
-        networkType: 'testnet',
-        includePending: true
-      }),
+    const [gwRes, circleTokens] = await Promise.all([
+      fetch('https://gateway-api-testnet.circle.com/v1/balances', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: 'USDC', sources: [{ domain: 26, depositor: walletAddress }] }),
+      }).then(r => r.json()),
       getAgentWalletBalance(walletId)
     ]);
-    const breakdown = ub.breakdown?.[0]?.breakdown || [];
-    const chains = breakdown.map(c => ({ chain: c.chain, balance: parseFloat(c.confirmedBalance || '0') }));
-    const circleWallet = parseFloat(circleTokens.find(t => t.token?.symbol === 'USDC')?.amount || '0');
-    const unifiedTotal = parseFloat(ub.totalConfirmedBalance || '0');
+    const CHAIN_MAP = {
+      0: 'Ethereum_Sepolia', 1: 'Avalanche_Fuji', 2: 'Optimism_Sepolia',
+      3: 'Arbitrum_Sepolia', 5: 'Solana_Devnet', 6: 'Base_Sepolia',
+      7: 'Polygon_Amoy_Testnet', 10: 'Unichain_Sepolia', 13: 'Sonic_Testnet',
+      14: 'World_Chain_Sepolia', 16: 'Sei_Testnet', 19: 'HyperEVM_Testnet', 26: 'Arc_Testnet'
+    };
+    const gwBalances = gwRes.balances || [];
+    const ALL_CHAINS = ['Ethereum_Sepolia','Base_Sepolia','Avalanche_Fuji','Arbitrum_Sepolia','Sonic_Testnet','World_Chain_Sepolia','Sei_Testnet','HyperEVM_Testnet','Arc_Testnet','Optimism_Sepolia','Polygon_Amoy_Testnet','Unichain_Sepolia'];
+    const gwMap = {};
+    gwBalances.forEach(b => { const name = CHAIN_MAP[b.domain]; if(name) gwMap[name] = parseFloat(b.balance||'0'); });
+    const chains = ALL_CHAINS.map(chain => ({ chain, balance: gwMap[chain] || 0 }));
+    const circleWallet = parseFloat(circleTokens.find(t => t.token?.symbol === 'USDC' && !t.token?.isNative)?.amount || '0');
+    const unifiedTotal = gwBalances.reduce((s, b) => s + parseFloat(b.balance || '0'), 0);
     const total = circleWallet + unifiedTotal;
     const baseSepolia = chains.find(c => c.chain === 'Base_Sepolia')?.balance || 0;
     const arcTestnet  = chains.find(c => c.chain === 'Arc_Testnet')?.balance || 0;
@@ -93,28 +125,28 @@ app.get('/api/balances', async (req, res) => {
 
 // Inline runner
 let running = false;
-async function runInline(fn, label) {
-  if (running) { broadcast({ type:'error', message:'Already running' }); return; }
+async function runInline(fn, label, eoa = null) {
+  if (running) { broadcast({ type:'error', message:'Already running' }, eoa); return; }
   running = true;
-  broadcast({ type:'start', script: label });
+  broadcast({ type:'start', script: label }, eoa);
   const orig = console.log;
   const origErr = console.error;
   console.log = (...a) => {
     const line = a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ');
     orig(line);
-    broadcast({ type:'log', line });
+    broadcast({ type:'log', line }, eoa);
   };
   console.error = (...a) => {
     const line = a.map(x => typeof x === 'object' ? JSON.stringify(x) : String(x)).join(' ');
     origErr(line);
-    broadcast({ type:'log', line: '⚠️ ' + line });
+    broadcast({ type:'log', line: '⚠️ ' + line }, eoa);
   };
   try {
     await fn();
-    broadcast({ type:'done', code:0 });
+    broadcast({ type:'done', code:0 }, eoa);
   } catch(e) {
-    broadcast({ type:'log', line:'❌ ' + e.message });
-    broadcast({ type:'done', code:1 });
+    broadcast({ type:'log', line:'❌ ' + e.message }, eoa);
+    broadcast({ type:'done', code:1 }, eoa);
   } finally {
     console.log = orig;
     running = false;
@@ -126,7 +158,7 @@ async function runInline(fn, label) {
 // POST
 app.post('/api/regime-check', (req, res) => {
   res.json({ ok:true });
-  runInline(() => detectRegime(), 'regime-check');
+  runInline(() => detectRegime(), 'regime-check', req.body?.eoa?.toLowerCase() || null);
 });
 app.post('/api/risk-on', (req, res) => {
   res.json({ ok:true });
@@ -141,7 +173,7 @@ app.post('/api/risk-on', (req, res) => {
       await executeRiskOn(regime, user.wallet_address, user.wallet_id, user.eoa);
     }
   }
-  runInline(() => runForUsers(), 'risk-on');
+  runInline(() => runForUsers(), 'risk-on', eoa || null);
 });
 app.post('/api/risk-off', (req, res) => {
   res.json({ ok:true });
@@ -156,7 +188,7 @@ app.post('/api/risk-off', (req, res) => {
       await executeRiskOff(regime, user.wallet_address, user.wallet_id, user.eoa);
     }
   }
-  runInline(() => runForUsers(), 'risk-off');
+  runInline(() => runForUsers(), 'risk-off', eoa || null);
 });
 
 // ── User Count ───────────────────────────────────────────────────────────────
@@ -169,8 +201,8 @@ app.get('/api/users', (req, res) => {
 
 // ── Internal Log (from agent.js) ─────────────────────────────────────────────
 app.post('/internal/log', (req, res) => {
-  const { line } = req.body || {};
-  if (line) broadcast({ type:'log', line });
+  const { line, eoa } = req.body || {};
+  if (line) broadcast({ type:'log', line }, eoa?.toLowerCase() || null);
   res.json({ ok: true });
 });
 

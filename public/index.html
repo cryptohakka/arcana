@@ -315,6 +315,7 @@ async function connectWallet(){
     showToast('Connected: '+wallet.slice(0,10)+'…','ok');
     addLog('Wallet connected: '+wallet,'ok');
     await registerUserWallet(wallet);
+    connectSSE(); // EOA確定後に再接続
   }catch(e){
     label.textContent='Connect Wallet';
     showToast(e.message,'danger');
@@ -408,7 +409,7 @@ function switchTab(name,btn){
 
 function addLog(txt,type=''){
   const log=document.getElementById('log');
-  const ts=new Date().toTimeString().slice(0,8);
+  const ts=new Date().toUTCString().slice(17,25);
   const s=document.createElement('span');
   s.className='ll '+type;
   s.textContent='['+ts+'] '+txt;
@@ -424,10 +425,14 @@ async function forceAction(type){
   }catch(e){addLog('[error] '+e.message,'err');}
 }
 
+let _sse=null;
 function connectSSE(){
-  const sse=new EventSource(API+'/events');
+  if(_sse){try{_sse.close();}catch{} _sse=null;}
+  const eoa=wallet||'';
+  const sse=new EventSource(API+'/events'+(eoa?'?eoa='+eoa:''));
+  _sse=sse;
   sse.onopen=()=>setOnline(true);
-  sse.onerror=()=>{setOnline(false);setTimeout(connectSSE,4000);};
+  sse.onerror=()=>{setOnline(false);try{sse.close();}catch{} setTimeout(connectSSE,4000);};
   sse.onmessage=e=>{
     try{
       const m=JSON.parse(e.data);
@@ -582,7 +587,7 @@ function renderHistory(){
     const t=tm[tx.type]||{icon:'◎',cls:'',label:tx.type};
     const hash=tx.tx?tx.tx.slice(0,10)+'…'+tx.tx.slice(-6):null;
     const explorerUrl=tx.type==='arcana-arc-retrieve'?'https://sepolia.basescan.org/tx/'+tx.tx:'https://testnet.arcscan.app/tx/'+tx.tx;
-    return`<div class="tx-card"><div class="tx-ico ${t.cls}">${t.icon}</div><div class="tx-body"><div class="tx-type">${t.label}</div><div class="tx-meta">${tx.regime||'—'} · ${tx.amount?tx.amount+' USDC':''}</div></div><div class="tx-right"><div class="tx-amt">${tx.amount?tx.amount+' USDC':'—'}</div><div class="tx-time">${(tx.time||'').slice(0,19).replace('T',' ')}</div>${hash?'<div class="tx-hash" onclick="window.open(\'' + explorerUrl + '\',\'_blank\')">' + hash + '</div>':''}</div></div>`;
+    return`<div class="tx-card"><div class="tx-ico ${t.cls}">${t.icon}</div><div class="tx-body"><div class="tx-type">${t.label}</div><div class="tx-meta">${tx.regime||'—'} · ${tx.amount?tx.amount+' USDC':''}</div></div><div class="tx-right"><div class="tx-amt">${tx.amount?tx.amount+' USDC':'—'}</div><div class="tx-time">${(tx.time||'').slice(0,19).replace('T',' ')} UTC</div>${hash?'<div class="tx-hash" onclick="window.open(\'' + explorerUrl + '\',\'_blank\')">' + hash + '</div>':''}</div></div>`;
   }).join('');
 }
 
