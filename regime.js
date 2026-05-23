@@ -269,9 +269,9 @@ Rules:
     oi_change: btc.deltas?.oi_change_pct_3h ?? null,
     updated_at: new Date().toISOString(),
     council: {
-      architect: architectReply.slice(0, 120),
-      auditor:   auditorReply.slice(0, 120),
-      arbiter:   result.reasoning?.slice(0, 120) || arbiterRaw.slice(0, 120),
+      architect: (architectReply.match(/^[^.!?]+[.!?]/)?.[0] || architectReply.slice(0, 100)).trim(),
+      auditor:   (auditorReply.match(/^[^.!?]+[.!?]/)?.[0] || auditorReply.slice(0, 100)).trim(),
+      arbiter:   (result.reasoning?.match(/^[^.!?]+[.!?]/)?.[0] || result.reasoning?.slice(0, 100) || '').trim(),
     },
   };
   fs.writeFileSync(REGIME_PATH, JSON.stringify(regime, null, 2));
