@@ -36,13 +36,19 @@ async function infer(messages, maxTokens = 800, agentName = 'Arcana') {
 // ── Discord webhook ───────────────────────────────────────────────────────────
 async function sendAsAgent(role, content) {
   const url = WEBHOOKS[role];
-  if (!url) return;
   const nameMap = {
     architect: '🏛️ Architect',
     auditor:   '🔍 Auditor',
     arbiter:   '⚖️ Arbiter',
     system:    '🤖 System',
   };
+  // broadcast to Live Log (summary: first 300 chars)
+  if (global._broadcast) {
+    const label = nameMap[role] || role;
+    const summary = content.replace(/\*\*/g,'').replace(/\n+/g,' ').trim().slice(0,300);
+    global._broadcast({ type:'log', line: `[${label}] ${summary}` });
+  }
+  if (!url) return;
   const chunks = content.match(/[\s\S]{1,1900}/g) || [content];
   for (const chunk of chunks) {
     await axios.post(url, { content: chunk, username: nameMap[role] })
