@@ -1,6 +1,6 @@
 # Arcana — Adaptive Portfolio Manager
 
-**Arcana** is an autonomous DeFi portfolio manager built on Circle's Arc Testnet. It continuously monitors BTC market conditions using a 3-agent AI council, then autonomously rebalances user funds between Arc Testnet (safe parking) and Base Sepolia yield vaults — without requiring any user action after initial deposit.
+**Arcana** is an autonomous DeFi portfolio manager built on Circle's Arc Testnet. It continuously monitors BTC market conditions using a 3-agent AI council, then autonomously rebalances user funds between Arc Testnet (safe parking) and Base Sepolia yield vaults — without requiring any user action after initial deposit. Regime detection runs every hour.
 
 Built for [Agora RFB04](https://www.agora.finance/) — Risk-Based Portfolio Management on Arc.
 
@@ -12,7 +12,7 @@ Built for [Agora RFB04](https://www.agora.finance/) — Risk-Based Portfolio Man
 BTC Market Data → 3-Agent Regime Detection → Risk Decision → Arc ↔ Base Rebalance → LI.FI Vault
 ```
 
-### 1. Regime Detection (every 15 min)
+### 1. Regime Detection (every 60 min)
 
 Three AI agents analyze BTC market signals in sequence:
 
@@ -94,7 +94,7 @@ Each event is emitted by the agent wallet (`onlyAgent` modifier) immediately aft
 
 | File | Description |
 |------|-------------|
-| `ui-server.js` | Express server, SSE live log, REST endpoints, 15-min scheduler |
+| `ui-server.js` | Express server, SSE live log, REST endpoints, 60-min scheduler |
 | `agent.js` | Core rebalance logic: `executeRiskOn`, `executeRiskOff`, multi-user DCW loop |
 | `regime.js` | 3-agent market analysis (Architect → Auditor → Arbiter) |
 | `arc.js` | Circle Arc App Kit integration: `unifiedDeposit`, `unifiedSpend`, bidirectional bridge |
@@ -102,6 +102,7 @@ Each event is emitted by the agent wallet (`onlyAgent` modifier) immediately aft
 | `scorer.js` | Signal scoring from funding rate, OI delta, price trend |
 | `rebalance.js` | Rebalance decision logic and threshold evaluation |
 | `tools.js` | Shared utilities: Hyperliquid data fetch, snapshot management |
+| `composer.js` | LI.FI Composer integration: vault deposit routing, cross-chain status polling (used by rebalance.js CLI flow) |
 | `recorder.js` | PositionRecorder contract client: `recordOpen`, `recordClose` onchain audit trail |
 | `contracts/PositionRecorder.sol` | Solidity contract deployed on Arc Testnet — emits `PositionOpened` / `PositionClosed` events |
 | `public/index.html` | Single-file frontend: 2-column dashboard, live SSE log, SVG BTC chart |
@@ -210,7 +211,7 @@ sudo systemctl enable arcana-ui
 
 1. Connect wallet → agent DCW is auto-created
 2. Send USDC to your deposit address on Arc Testnet
-3. Watch the 15-min regime cycle rebalance your position automatically
+3. Watch the 60-min regime cycle rebalance your position automatically
 4. Use **▶ Regime Check / Risk-On / Risk-Off** buttons in Live Log for instant demo
 
 ---
