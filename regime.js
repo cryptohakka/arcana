@@ -282,8 +282,8 @@ Rules:
       const clean = s => s.replace(/#{1,3}[^\n]*/g,'').replace(/\*\*/g,'').replace(/\*\s/g,'').replace(/\d+\.[^\n]*/g,'').replace(/\n+/g,' ').trim();
       const first = s => (clean(s).match(/[^.!?]+[.!?]/)?.[0] || clean(s).slice(0, 100)).trim();
       return {
-        architect: sentiment(architectReply) + ' — ' + first(architectReply),
-        auditor:   (auditorReply.toLowerCase().includes('agree') ? 'agrees' : 'challenges') + ' — ' + first(auditorReply),
+        architect: sentiment(architectReply) + ' — ' + clean(architectReply).slice(0, 90).trim() + '...',
+        auditor:   (auditorReply.toLowerCase().includes('agree') ? 'agrees' : 'challenges') + ' — ' + clean(auditorReply).slice(0, 90).trim() + '...',
         arbiter:   first(result.reasoning || arbiterRaw),
       };
     })(),
