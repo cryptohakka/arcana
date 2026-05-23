@@ -471,8 +471,14 @@ async function unifiedTransferToArc(amountUsdc, recipientAddress = null, walletI
 
 async function unifiedTransferFromArc(amountUsdc, recipientAddress = null, walletId = null, walletAddress = null) {
   const kit = new AppKit();
-  // ユーザーのCircle Walletアダプターを使用（walletId/walletAddressがあれば）
-  const { adapter, address } = getAppKitAdapter(walletId, walletAddress);
+  // from: Circle Walletアダプター（Arc Testnet）、to: viemアダプター（Base Sepolia）
+  const { createCircleWalletsAdapter } = require('@circle-fin/adapter-circle-wallets');
+  const circleAdapter = createCircleWalletsAdapter({
+    apiKey: process.env.CIRCLE_API_KEY,
+    entitySecret: process.env.CIRCLE_ENTITY_SECRET,
+  });
+  const { adapter: viemAdapter } = getAppKitAdapter(null, null);
+  const { address } = getAppKitAdapter(walletId, walletAddress);
   const recipient = recipientAddress || address || process.env.WALLET_ADDRESS;
   console.log(`[arc] Unified spend: Arc_Testnet → Base_Sepolia ${amountUsdc} USDC...`);
   let result;
@@ -480,8 +486,8 @@ async function unifiedTransferFromArc(amountUsdc, recipientAddress = null, walle
     result = await kit.unifiedBalance.spend({
       amount: amountUsdc.toString(),
       token: 'USDC',
-      from: { adapter, address },
-      to: { adapter, chain: 'Base_Sepolia', recipientAddress: recipient, address },
+      from: [{ adapter: circleAdapter, address }],
+      to: { adapter: viemAdapter, chain: 'Base_Sepolia', recipientAddress: recipient },
     });
   } catch(e) {
     // Mint failure後もtxHashが取れる場合がある

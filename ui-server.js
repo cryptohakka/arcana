@@ -194,7 +194,7 @@ app.post('/api/withdraw', async (req, res) => {
     const arcBal = ubBal.arcTestnet || 0;
     let unifiedTxHash = null;
     if (arcBal >= 0.01) {
-      const spendAmt = (Math.floor((arcBal - 0.1) * 10) / 10).toFixed(1);
+      const spendAmt = (Math.floor((arcBal - 0.01) * 100) / 100).toFixed(2);
       const result = await kit.unifiedBalance.spend({
         amount: spendAmt,
         token: 'USDC',
