@@ -271,7 +271,7 @@ Rules:
     council: {
       architect: architectReply.slice(0, 120),
       auditor:   auditorReply.slice(0, 120),
-      arbiter:   arbiterRaw.slice(0, 120),
+      arbiter:   result.reasoning?.slice(0, 120) || arbiterRaw.slice(0, 120),
     },
   };
   fs.writeFileSync(REGIME_PATH, JSON.stringify(regime, null, 2));
