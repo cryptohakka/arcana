@@ -47,6 +47,22 @@ Each user registers with their EOA wallet. Arcana derives a dedicated **Develope
 
 ---
 
+## Onchain Audit Trail
+
+Every autonomous rebalance decision is permanently recorded on Arc Testnet via the **PositionRecorder** contract.
+
+**Contract:** `0xae2de994382ebB9fA0569Ea18029437d996bf1D3`  
+**Explorer:** https://testnet.arcscan.app/address/0xae2de994382ebB9fA0569Ea18029437d996bf1D3
+
+| Event | Trigger | Data |
+|-------|---------|------|
+| `PositionOpened` | Risk-On rebalance | EOA, amount (USDC), vault name, regime phase |
+| `PositionClosed` | Risk-Off rebalance | EOA, reason, timestamp |
+
+Each event is emitted by the agent wallet (`onlyAgent` modifier) immediately after execution, creating a tamper-proof history independent of the local `tx_history.json`. Any external party can verify the agent's decision history on-chain.
+
+---
+
 ## Architecture
 
 ```
@@ -67,11 +83,11 @@ Each user registers with their EOA wallet. Arcana derives a dedicated **Develope
         │ council  │  │ bridge   │
         └────────┬─┘  └─▼────────┘
                  │    Circle Unified Balance
-        ┌────────▼──────────────┐
-        │      earn.js          │
-        │  LI.FI Earn API       │
-        │  vault selection      │
-        └───────────────────────┘
+        ┌────────▼──────────────┐      ┌─────────────────────┐
+        │      earn.js          │      │   recorder.js       │
+        │  LI.FI Earn API       │      │  PositionRecorder   │
+        │  vault selection      │      │  Arc Testnet        │
+        └───────────────────────┘      └─────────────────────┘
 ```
 
 ### Key Files
@@ -86,6 +102,8 @@ Each user registers with their EOA wallet. Arcana derives a dedicated **Develope
 | `scorer.js` | Signal scoring from funding rate, OI delta, price trend |
 | `rebalance.js` | Rebalance decision logic and threshold evaluation |
 | `tools.js` | Shared utilities: Hyperliquid data fetch, snapshot management |
+| `recorder.js` | PositionRecorder contract client: `recordOpen`, `recordClose` onchain audit trail |
+| `contracts/PositionRecorder.sol` | Solidity contract deployed on Arc Testnet — emits `PositionOpened` / `PositionClosed` events |
 | `public/index.html` | Single-file frontend: 2-column dashboard, live SSE log, SVG BTC chart |
 
 ### Database Schema
@@ -103,6 +121,7 @@ user_positions (id, eoa, type, amount, vault_address, chain, created_at)
 
 | Layer | Technology |
 |-------|-----------|
+| Smart Contracts | Solidity (PositionRecorder) deployed on Arc Testnet |
 | Custody | Circle Developer-Controlled Wallets (DCW) |
 | Cross-chain | Circle Arc App Kit — Unified Balance |
 | Yield | LI.FI Earn API |
