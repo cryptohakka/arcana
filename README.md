@@ -24,6 +24,8 @@ Three AI agents analyze BTC market signals in sequence:
 
 Output: `regime` (risk_on / risk_off), `confidence` (0–1), `phase`, `rebalance` flag.
 
+The `rebalance` flag acts as an **Economic Guardrail** — execution only triggers when the Arbiter determines the regime shift is significant enough to justify bridge fees and gas costs, preventing churning in range-bound markets.
+
 ### 2. Risk-Off — Park on Arc Testnet
 
 When the regime flips to `risk_off`:
@@ -228,3 +230,5 @@ MIT
 - [ ] Vault risk metadata (TVL, Protocol Age, Risk level)
 - [ ] Pending bridge status card (Pending → Confirmed → Minted)
 - [ ] Auto-execution mode (currently human-in-the-loop by design)
+- [ ] Risk-Adjusted Yield scoring for vault selection (mainnet: TVL + audit history + Lindy effect, not just APY)
+- [ ] Market data redundancy (Hyperliquid primary + Binance/Pyth fallback)
