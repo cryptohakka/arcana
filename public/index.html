@@ -569,7 +569,7 @@ function updateBalances(d){
     renderChainList(false);
   }
   const circleEl=document.getElementById('ubCircle');if(circleEl)circleEl.textContent=(d.circleWallet||0).toFixed(4);
-  document.getElementById('ubTotal').textContent=(d.total||0).toFixed(4);
+  document.getElementById('ubTotal').textContent=(d.unifiedTotal||0).toFixed(4);
 }
 
 function renderChainList(showAll){
