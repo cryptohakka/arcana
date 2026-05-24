@@ -71,7 +71,7 @@ function computeDeltas(current, snaps) {
   const deltas = {};
   if (!snaps.length) return deltas;
 
-  const prev = snaps[snaps.length - 1]; // 3h ago
+  const prev = snaps.length >= 3 ? snaps[snaps.length - 3] : snaps[0]; // 3h ago (1h intervals)
 
   if (prev.mark_price > 0)
     deltas.price_change_pct_3h = +((current.mark_price - prev.mark_price) / prev.mark_price * 100).toFixed(3);
