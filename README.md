@@ -219,3 +219,12 @@ sudo systemctl enable arcana-ui
 ## License
 
 MIT
+
+---
+
+## Roadmap
+
+- [ ] Capital allocation % display (parked vs deployed breakdown)
+- [ ] Vault risk metadata (TVL, Protocol Age, Risk level)
+- [ ] Pending bridge status card (Pending → Confirmed → Minted)
+- [ ] Auto-execution mode (currently human-in-the-loop by design)
