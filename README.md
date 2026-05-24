@@ -1,6 +1,6 @@
 # Arcana — Adaptive Portfolio Manager
 
-**Arcana** is an autonomous DeFi portfolio manager built on Circle's Arc Testnet. It continuously monitors BTC market conditions using a 3-agent AI council, then autonomously rebalances user funds between Arc Testnet (safe parking) and Base Sepolia yield vaults — without requiring any user action after initial deposit. Regime detection runs every hour.
+**Arcana** is a DeFi portfolio manager built on Circle's Arc Testnet. It continuously monitors BTC market conditions using a 3-agent AI council, then recommends rebalancing between Arc Testnet (safe parking) and Base Sepolia yield vaults — with humans approving each execution. Regime detection runs every hour.
 
 Built for [Agora RFB04](https://www.agora.finance/) — Risk-Based Portfolio Management on Arc.
 
