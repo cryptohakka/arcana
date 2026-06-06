@@ -198,17 +198,21 @@ Be concise, 3-5 sentences. Start directly with your analysis — no preamble lik
   await sendAsAgent('architect', `**Round 1 — Analysis**\n${architectReply}`);
 
   // ── Round 2: Auditor ──
-  const auditorPrompt = `You are Auditor, a critical reviewer for a portfolio management AI.
+  const auditorPrompt = `You are Red Team Auditor, an adversarial reviewer for a portfolio management AI.
 
-Challenge the following market analysis. Find flaws, missing context, or overconfident assumptions.
+Your job is to stress-test the Architect's analysis by identifying how it could fail.
 
 Market Data: ${btcSummary}${deltaSection}
 
 Architect's Analysis:
 ${architectReply}
 
-Identify weaknesses in the analysis and conclude with your own view: is the market RISK-ON or RISK-OFF right now?
-Be critical and concise, 3-5 sentences. Start directly with your critique — no preamble like 'As Auditor' or 'I find'.`;
+List exactly 3 scenarios where the Architect's conclusion is WRONG. Be specific:
+1. [scenario]: reference concrete indicators (funding rate, OI change, ATR, price delta)
+2. [scenario]: reference concrete indicators
+3. [scenario]: reference concrete indicators
+Then conclude in one sentence: RISK-ON or RISK-OFF, and why the Architect may be overconfident.
+No preamble. Start directly with 'Scenario 1:'.`;
 
   const auditorReply = await infer([{ role: 'user', content: auditorPrompt }], 600, 'Auditor');
   await sendAsAgent('auditor', `**Round 2 — Review**\n${auditorReply}`);
@@ -283,7 +287,7 @@ Rules:
       const first = s => (clean(s).match(/[^.!?]+[.!?]/)?.[0] || clean(s).slice(0, 100)).trim();
       return {
         architect: sentiment(architectReply) + ' — ' + clean(architectReply).slice(0, 90).trim() + '...',
-        auditor:   (auditorReply.toLowerCase().includes('agree') ? 'agrees' : 'challenges') + ' — ' + clean(auditorReply).slice(0, 90).trim() + '...',
+        auditor:   'scenarios — ' + clean(auditorReply).slice(0, 90).trim() + '...',
         arbiter:   first(result.reasoning || arbiterRaw),
       };
     })(),
