@@ -19,7 +19,7 @@ Three AI agents analyze BTC market signals in sequence:
 | Agent | Role |
 |-------|------|
 | **Architect** | Builds the bull/bear case from funding rate, OI delta, price trend, and signal score |
-| **Auditor** | Critiques the Architect's analysis, challenging unsupported assumptions |
+| **Red Team Auditor** | Stress-tests the Architect by listing exactly 3 failure scenarios with concrete indicators (funding rate, OI delta, ATR). Concludes with a RISK-ON/RISK-OFF verdict and overconfidence assessment |
 | **Arbiter** | Weighs both arguments and outputs a structured JSON regime decision |
 
 Output: `regime` (risk_on / risk_off), `confidence` (0–1), `phase`, `rebalance` flag.
@@ -98,7 +98,7 @@ Each event is emitted by the agent wallet (`onlyAgent` modifier) immediately aft
 |------|-------------|
 | `ui-server.js` | Express server, SSE live log, REST endpoints, 60-min scheduler |
 | `agent.js` | Core rebalance logic: `executeRiskOn`, `executeRiskOff`, multi-user DCW loop |
-| `regime.js` | 3-agent market analysis (Architect → Auditor → Arbiter) |
+| `regime.js` | 3-agent market analysis (Architect → Red Team Auditor → Arbiter). Hysteresis: regime only confirms after 2 consecutive matching detections. Post-Mortem: LLM analysis saved to `post_mortems.json` after each rebalance |
 | `arc.js` | Circle Arc App Kit integration: `unifiedDeposit`, `unifiedSpend`, bidirectional bridge |
 | `earn.js` | LI.FI Earn API client: vault discovery, APY ranking, pagination |
 | `scorer.js` | Signal scoring from funding rate, OI delta, price trend |
