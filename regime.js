@@ -283,7 +283,7 @@ Rules:
         if(t.includes('bearish') || t.includes('risk-off') || t.includes('downward')) return 'bearish';
         return 'neutral';
       };
-      const clean = s => s.replace(/#{1,3}[^\n]*/g,'').replace(/\*\*/g,'').replace(/\*\s/g,'').replace(/\d+\.[^\n]*/g,'').replace(/\n+/g,' ').trim();
+      const clean = s => s.replace(/#{1,3}[^\n]*/g,'').replace(/\*\*/g,'').replace(/\*\s/g,'').replace(/^\d+\.\s/gm,'').replace(/\n+/g,' ').trim();
       const first = s => (clean(s).match(/[^.!?]+[.!?]/)?.[0] || clean(s).slice(0, 100)).trim();
       return {
         architect: sentiment(architectReply) + ' — ' + clean(architectReply).slice(0, 90).trim() + '...',
