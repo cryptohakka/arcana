@@ -1,0 +1,12 @@
+[
+  {
+    "ts": "2026-06-06T17:43:38.397Z",
+    "eoa": "test",
+    "action": "risk_off",
+    "vaultName": "USYC",
+    "valueUsd": 100,
+    "regime": "risk_off",
+    "entryRegime": "risk_on",
+    "analysis": "The rebalance to risk-off for USYC, valued at $100.00, was triggered by a shift from a risk-on to a risk-off market regime, aiming to reduce exposure amidst potentially declining asset prices, with the primary risk being missing out on potential gains should the market quickly revert to a risk-on environment."
+  }
+]
