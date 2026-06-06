@@ -214,7 +214,7 @@ List exactly 3 scenarios where the Architect's conclusion is WRONG. Be specific:
 Then conclude in one sentence: RISK-ON or RISK-OFF, and why the Architect may be overconfident.
 No preamble. Start directly with 'Scenario 1:'.`;
 
-  const auditorReply = await infer([{ role: 'user', content: auditorPrompt }], 600, 'Auditor');
+  const auditorReply = await infer([{ role: 'user', content: auditorPrompt }], 1200, 'Auditor');
   await sendAsAgent('auditor', `**Round 2 — Review**\n${auditorReply}`);
 
   // ── Round 3: Arbiter ──
@@ -287,7 +287,7 @@ Rules:
       const first = s => (clean(s).match(/[^.!?]+[.!?]/)?.[0] || clean(s).slice(0, 100)).trim();
       return {
         architect: sentiment(architectReply) + ' — ' + clean(architectReply).slice(0, 90).trim() + '...',
-        auditor:   'scenarios — ' + clean(auditorReply).slice(0, 90).trim() + '...',
+        auditor:   'scenarios — ' + clean(auditorReply).trim(),
         arbiter:   first(result.reasoning || arbiterRaw),
       };
     })(),

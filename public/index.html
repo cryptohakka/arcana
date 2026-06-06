@@ -270,7 +270,8 @@ main{display:flex;flex-direction:column;overflow:hidden;min-height:0;}
                     </div>
                     <div style="display:flex;gap:8px;align-items:flex-start;">
                       <span style="font-family:var(--mono);font-size:9px;color:#f97316;min-width:60px;">🔍 AUD</span>
-                      <span id="councilAuditor" style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.4;"></span>
+                      <span id="councilAuditor" style="font-family:var(--mono);font-size:9px;color:var(--text3);line-height:1.4;cursor:pointer;" title="Click to expand"></span>
+<span id="councilAuditorFull" style="font-family:var(--mono);font-size:9px;color:var(--text2);line-height:1.4;display:none;white-space:pre-wrap;"></span>
                     </div>
                     <div style="display:flex;gap:8px;align-items:flex-start;">
                       <span style="font-family:var(--mono);font-size:9px;color:#4d9fff;min-width:60px;">⚖️ ARB</span>
@@ -512,7 +513,14 @@ function updateRegime(d){
   if(d.council){
     document.getElementById('councilPanel').style.display='block';
     document.getElementById('councilArchitect').textContent=d.council.architect||'—';
-    document.getElementById('councilAuditor').textContent=d.council.auditor||'—';
+    const auditorFull = d.council.auditor || '—';
+    const auditorShort = auditorFull.slice(0, 120) + (auditorFull.length > 120 ? '… ' + '<span style="color:#fff;font-weight:600;">[expand]</span>' : '');
+    const elShort = document.getElementById('councilAuditor');
+    const elFull = document.getElementById('councilAuditorFull');
+    elShort.innerHTML = auditorShort;
+    elFull.textContent = auditorFull;
+    elShort.onclick = () => { elShort.style.display='none'; elFull.style.display='block'; };
+    elFull.onclick = () => { elFull.style.display='none'; elShort.style.display='block'; };
     document.getElementById('councilArbiter').textContent=d.council.arbiter||'—';
   }
   const pct=Math.round((d.confidence||0)*100);
