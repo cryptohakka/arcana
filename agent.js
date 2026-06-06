@@ -259,9 +259,11 @@ function getDb() { return new Database('./users.db'); }
 
 function getLastRegime() {
   const db = getDb();
-  const row = db.prepare('SELECT regime FROM regime_history ORDER BY id DESC LIMIT 1').get();
+  const rows = db.prepare('SELECT regime FROM regime_history ORDER BY id DESC LIMIT 2').all();
   db.close();
-  return row?.regime || null;
+  if (rows.length < 2) return rows[0]?.regime || null;
+  // hysteresis: only return confirmed regime if last 2 agree
+  return rows[0].regime === rows[1].regime ? rows[0].regime : null;
 }
 
 function saveRegime(regime) {
@@ -300,6 +302,27 @@ function getPosition(eoa) {
   return row || null;
 }
 
+
+// ── Post-Mortem Agent ─────────────────────────────────────────────────────────
+const POST_MORTEMS_FILE = './post_mortems.json';
+async function runPostMortem(eoa, action, vaultName, valueUsd, regime, entryRegime) {
+  try {
+    const { infer } = require('./regime');
+    const prompt = `You are a portfolio post-mortem analyst. A rebalance action just executed.
+Action: ${action} (regime changed to ${regime})
+Vault/Target: ${vaultName}
+Value: ${valueUsd?.toFixed(2) ?? 'N/A'}
+Prior regime: ${entryRegime ?? 'unknown'}
+Write ONE concise sentence explaining the rationale for this rebalance and the primary risk it carries. Be specific about market conditions that triggered it. No preamble.`;
+    const analysis = await infer([{ role: 'user', content: prompt }], 200, 'PostMortem');
+    let mortems = [];
+    if (fs.existsSync(POST_MORTEMS_FILE)) mortems = JSON.parse(fs.readFileSync(POST_MORTEMS_FILE, 'utf8'));
+    mortems.unshift({ ts: new Date().toISOString(), eoa: eoa?.slice(0,10), action, vaultName, valueUsd, regime, entryRegime, analysis });
+    if (mortems.length > 50) mortems = mortems.slice(0, 50);
+    fs.writeFileSync(POST_MORTEMS_FILE, JSON.stringify(mortems, null, 2));
+    console.log(`[post-mortem] ${action} — ${analysis?.slice(0,80)}`);
+  } catch(e) { console.error('[post-mortem] failed:', e.message); }
+}
 // ── Main loop ─────────────────────────────────────────────────────────────────
 async function run() {
   await notify(`🚀 **Arcana Agent Started**\nInterval: ${INTERVAL_MS / 60000} min`);

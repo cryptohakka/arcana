@@ -304,7 +304,7 @@ Rules:
   return regime;
 }
 
-module.exports = { detectRegime };
+module.exports = { detectRegime, infer };
 
 // Run directly
 if (require.main === module) {
